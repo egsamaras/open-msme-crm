@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router'
 import type { Role, User } from '@/api/client'
+import { useApprovalCount } from '@/api/agents'
 import { useAppInfo, useLogout } from '@/auth'
 import { PersonaSwitcher } from '@/components/PersonaSwitcher'
 import { Badge } from '@/components/ui'
@@ -30,6 +31,8 @@ const NAV: NavItem[] = [
 export function Layout({ user }: { user: User }) {
   const info = useAppInfo()
   const logout = useLogout()
+  const approvals = useApprovalCount()
+  const waiting = approvals.data?.pending_for_me ?? 0
   // Hiding links is cosmetic; the server enforces every permission.
   const items = NAV.filter((n) => !n.roles || n.roles.includes(user.role))
 
@@ -60,6 +63,11 @@ export function Layout({ user }: { user: User }) {
             >
               <Icon className="size-4" aria-hidden />
               {label}
+              {to === '/approvals' && waiting > 0 && (
+                <span className="ml-auto rounded-full bg-amber-400 px-1.5 text-xs font-semibold text-slate-900" aria-label={`${waiting} waiting for you`}>
+                  {waiting}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

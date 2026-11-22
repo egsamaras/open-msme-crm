@@ -5,7 +5,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 
-from app.api.routes import accounts, auth, deals, system, tasks
+from app.agents import graphs  # noqa: F401  (importing registers the agent graphs)
+from app.agents.checkpointer import close_checkpointer, open_checkpointer
+from app.api.routes import accounts, agents, auth, deals, system, tasks
 from app.core.config import get_settings
 from app.db.session import dispose_engine
 
@@ -17,9 +19,12 @@ def _operation_id(route: APIRoute) -> str:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    # Phase 3 opens the LangGraph checkpointer pool here and calls checkpointer.setup().
-    yield
-    await dispose_engine()
+    await open_checkpointer(get_settings().checkpoint_database_url)
+    try:
+        yield
+    finally:
+        await close_checkpointer()
+        await dispose_engine()
 
 
 def create_app() -> FastAPI:
@@ -37,7 +42,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    for module in (system, auth, accounts, deals, tasks):
+    for module in (system, auth, accounts, deals, tasks, agents):
         app.include_router(module.router)
     return app
 

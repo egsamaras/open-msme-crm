@@ -25,7 +25,9 @@ import {
   type Facility,
   type InteractionIn,
 } from '@/api/queries'
+import { DemoAgentPanel } from '@/components/DemoAgentPanel'
 import { TaskList } from '@/components/TaskList'
+import { useAppInfo, useMe } from '@/auth'
 import { Badge, Card, EmptyState, ErrorState, Loading } from '@/components/ui'
 import {
   daysUntil,
@@ -69,8 +71,16 @@ function QueryState({ q, children }: { q: { isPending: boolean; isError: boolean
 export function OverviewTab({ account }: Props) {
   const tasks = useAccountTasks(account.id)
   const deals = useDeals(account.id)
+  const info = useAppInfo()
+  const me = useMe()
+  const showDemo = info.data?.dev_persona_switch && (me.data?.role === 'RM' || me.data?.role === 'ADMIN')
   return (
     <div className="grid gap-4 lg:grid-cols-2">
+      {showDemo && (
+        <div className="lg:col-span-2">
+          <DemoAgentPanel companyId={account.id} />
+        </div>
+      )}
       <Section title="Open tasks">
         <QueryState q={tasks}>
           {() => <TaskList tasks={(tasks.data ?? []).filter((t) => t.status === 'OPEN')} showCompany={false} />}

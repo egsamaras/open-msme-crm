@@ -11,6 +11,8 @@ import { PlaceholderPage } from '@/pages/PlaceholderPage'
 
 // Chart-heavy pages load on demand to keep the first load small.
 const AccountPage = lazy(() => import('@/pages/account/AccountPage').then((m) => ({ default: m.AccountPage })))
+const ApprovalsPage = lazy(() => import('@/pages/approvals/ApprovalsPage').then((m) => ({ default: m.ApprovalsPage })))
+const AuditPage = lazy(() => import('@/pages/AuditPage').then((m) => ({ default: m.AuditPage })))
 const PipelinePage = lazy(() => import('@/pages/pipeline/PipelinePage').then((m) => ({ default: m.PipelinePage })))
 
 function Lazy({ children }: { children: ReactNode }) {
@@ -34,22 +36,8 @@ function buildRouter(user: User) {
             </PlaceholderPage>
           ),
         },
-        {
-          path: 'approvals',
-          element: (
-            <PlaceholderPage title="Approvals" phase={3}>
-              Every action an agent proposes waits here for a person to edit, approve or reject it.
-            </PlaceholderPage>
-          ),
-        },
-        {
-          path: 'audit',
-          element: (
-            <PlaceholderPage title="Audit trail" phase={3}>
-              The append-only, hash-chained log of every decision and agent step.
-            </PlaceholderPage>
-          ),
-        },
+        { path: 'approvals', element: <Lazy><ApprovalsPage /></Lazy> },
+        { path: 'audit', element: <Lazy><AuditPage /></Lazy> },
         { path: '*', element: <PlaceholderPage title="Not found" phase={0}>This page doesn't exist.</PlaceholderPage> },
       ],
     },

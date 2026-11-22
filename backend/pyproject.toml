@@ -21,6 +21,8 @@ dependencies = [
     "pyjwt>=2.15",
     "pwdlib[argon2]>=0.4",
     "python-multipart>=0.0.20",
+    "langchain-anthropic>=1.0",
+    "langchain-openai>=1.0",
 ]
 
 [dependency-groups]
