@@ -1,0 +1,610 @@
+{
+  "components": {
+    "schemas": {
+      "AccountListItem": {
+        "properties": {
+          "annual_turnover": {
+            "title": "Annual Turnover",
+            "type": "string"
+          },
+          "country": {
+            "title": "Country",
+            "type": "string"
+          },
+          "cr_number": {
+            "title": "Cr Number",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "industry": {
+            "title": "Industry",
+            "type": "string"
+          },
+          "kyb_next_review": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kyb Next Review"
+          },
+          "kyb_status": {
+            "$ref": "#/components/schemas/KybStatus"
+          },
+          "legal_name": {
+            "title": "Legal Name",
+            "type": "string"
+          },
+          "open_ews": {
+            "title": "Open Ews",
+            "type": "integer"
+          },
+          "risk_rating": {
+            "title": "Risk Rating",
+            "type": "integer"
+          },
+          "rm_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rm Name"
+          },
+          "tier": {
+            "$ref": "#/components/schemas/MsmeTier"
+          },
+          "total_limit": {
+            "title": "Total Limit",
+            "type": "string"
+          },
+          "total_utilized": {
+            "title": "Total Utilized",
+            "type": "string"
+          },
+          "trading_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trading Name"
+          }
+        },
+        "required": [
+          "id",
+          "legal_name",
+          "trading_name",
+          "cr_number",
+          "country",
+          "industry",
+          "tier",
+          "currency",
+          "annual_turnover",
+          "risk_rating",
+          "kyb_status",
+          "kyb_next_review",
+          "rm_name",
+          "total_limit",
+          "total_utilized",
+          "open_ews"
+        ],
+        "title": "AccountListItem",
+        "type": "object"
+      },
+      "AppInfo": {
+        "properties": {
+          "default_currency": {
+            "title": "Default Currency",
+            "type": "string"
+          },
+          "dev_persona_switch": {
+            "title": "Dev Persona Switch",
+            "type": "boolean"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "llm_provider": {
+            "title": "Llm Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "environment",
+          "llm_provider",
+          "dev_persona_switch",
+          "default_currency"
+        ],
+        "title": "AppInfo",
+        "type": "object"
+      },
+      "AuditChainOut": {
+        "properties": {
+          "events_checked": {
+            "title": "Events Checked",
+            "type": "integer"
+          },
+          "first_bad_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Bad Seq"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "events_checked",
+          "first_bad_seq"
+        ],
+        "title": "AuditChainOut",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "KybStatus": {
+        "enum": [
+          "VERIFIED",
+          "PENDING_RENEWAL",
+          "FLAGGED"
+        ],
+        "title": "KybStatus",
+        "type": "string"
+      },
+      "LoginIn": {
+        "properties": {
+          "email": {
+            "maxLength": 255,
+            "minLength": 3,
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginIn",
+        "type": "object"
+      },
+      "MsmeTier": {
+        "enum": [
+          "MICRO",
+          "SMALL",
+          "MEDIUM"
+        ],
+        "title": "MsmeTier",
+        "type": "string"
+      },
+      "PersonaSwitchIn": {
+        "properties": {
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ],
+        "title": "PersonaSwitchIn",
+        "type": "object"
+      },
+      "Role": {
+        "enum": [
+          "RM",
+          "CREDIT_OFFICER",
+          "COMPLIANCE",
+          "ADMIN"
+        ],
+        "title": "Role",
+        "type": "string"
+      },
+      "UserOut": {
+        "properties": {
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "full_name",
+          "role",
+          "branch"
+        ],
+        "title": "UserOut",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Open MSME CRM",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/accounts": {
+      "get": {
+        "operationId": "list_accounts",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mine",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Mine",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AccountListItem"
+                  },
+                  "title": "Response List Accounts",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/audit/verify": {
+      "get": {
+        "operationId": "verify_audit_chain",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditChainOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Verify Audit Chain",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/auth/dev-switch": {
+      "post": {
+        "description": "Development only: sign in as a seeded persona without a password.",
+        "operationId": "dev_switch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonaSwitchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Dev Switch",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Login",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Logout",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/personas": {
+      "get": {
+        "description": "Development only: the seeded users the persona switcher can become.",
+        "operationId": "personas",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UserOut"
+                  },
+                  "title": "Response Personas",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Personas",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/info": {
+      "get": {
+        "operationId": "info",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Info",
+        "tags": [
+          "system"
+        ]
+      }
+    }
+  }
+}

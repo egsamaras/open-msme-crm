@@ -1,0 +1,43 @@
+{
+  "name": "open-msme-crm-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "generate:api": "cd ../backend && uv run python -m app.export_openapi ../frontend/openapi.json && cd ../frontend && openapi-typescript openapi.json -o src/api/schema.d.ts"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.108.2",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.77.0",
+    "openapi-fetch": "^0.17.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router": "^8.5.2",
+    "tailwind-merge": "^3.7.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.5",
+    "@testing-library/jest-dom": "^8.0.0",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.13",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "jsdom": "^29.1.1",
+    "openapi-typescript": "^7.13.0",
+    "oxlint": "^1.90.0",
+    "tailwindcss": "^4.3.5",
+    "typescript": "~5.9.3",
+    "vite": "^8.3.6",
+    "vitest": "^5.1.1"
+  },
+  "license": "Apache-2.0"
+}

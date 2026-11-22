@@ -1,0 +1,33 @@
+# Secrets and local config
+.env
+.env.*
+!.env.example
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Python
+.venv
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# iCloud conflict copies ("file 2.py")
+* 2
+* 2.*
