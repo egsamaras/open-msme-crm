@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 
-from app.api.routes import accounts, auth, system
+from app.api.routes import accounts, auth, deals, system, tasks
 from app.core.config import get_settings
 from app.db.session import dispose_engine
 
@@ -37,7 +37,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    for module in (system, auth, accounts):
+    for module in (system, auth, accounts, deals, tasks):
         app.include_router(module.router)
     return app
 

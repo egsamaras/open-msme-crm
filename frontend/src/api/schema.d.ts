@@ -21,6 +21,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/accounts/{company_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Account */
+        get: operations["get_account"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{company_id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Documents */
+        get: operations["get_documents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{company_id}/ews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Ews */
+        get: operations["get_ews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{company_id}/facilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Facilities */
+        get: operations["get_facilities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{company_id}/financials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Financials */
+        get: operations["get_financials"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{company_id}/interactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Interactions */
+        get: operations["get_interactions"];
+        put?: never;
+        /** Log Interaction */
+        post: operations["log_interaction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{company_id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Account Tasks */
+        get: operations["get_account_tasks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/audit/verify": {
         parameters: {
             query?: never;
@@ -129,6 +249,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Current Session
+         * @description Who is signed in, or `user: null`. Unlike /me, signed-out is a normal 200 answer.
+         */
+        get: operations["current_session"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Deals */
+        get: operations["list_deals"];
+        put?: never;
+        /** Create Deal */
+        post: operations["create_deal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals/{deal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Deal */
+        get: operations["get_deal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Deal */
+        patch: operations["update_deal"];
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -163,10 +339,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tasks */
+        get: operations["list_tasks"];
+        put?: never;
+        /** Create Task */
+        post: operations["create_task"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Task */
+        patch: operations["update_task"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AccountDetail */
+        AccountDetail: {
+            /** Annual Turnover */
+            annual_turnover: string;
+            /** Contacts */
+            contacts: components["schemas"]["ContactOut"][];
+            /** Country */
+            country: string;
+            /** Cr Number */
+            cr_number: string;
+            /** Currency */
+            currency: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Industry */
+            industry: string;
+            /** Kyb Next Review */
+            kyb_next_review: string | null;
+            kyb_status: components["schemas"]["KybStatus"];
+            /** Legal Name */
+            legal_name: string;
+            /** Owners */
+            owners: components["schemas"]["OwnerOut"][];
+            /** Risk Rating */
+            risk_rating: number;
+            /** Rm Id */
+            rm_id: string | null;
+            /** Rm Name */
+            rm_name: string | null;
+            tier: components["schemas"]["MsmeTier"];
+            /** Trading Name */
+            trading_name: string | null;
+            /** Ubo Threshold Pct */
+            ubo_threshold_pct: string;
+        };
         /** AccountListItem */
         AccountListItem: {
             /** Annual Turnover */
@@ -223,11 +472,287 @@ export interface components {
             /** Ok */
             ok: boolean;
         };
+        /** ChecklistItem */
+        ChecklistItem: {
+            doc_type: components["schemas"]["DocumentType"];
+            /** Document Id */
+            document_id: string | null;
+            /** Expiry Date */
+            expiry_date: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "MISSING" | "EXPIRED" | "PENDING" | "VERIFIED" | "REJECTED";
+        };
+        /** ContactOut */
+        ContactOut: {
+            /** Email */
+            email: string | null;
+            /** Full Name */
+            full_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Primary */
+            is_primary: boolean;
+            /** Phone */
+            phone: string | null;
+            /** Title */
+            title: string | null;
+        };
+        /** CovenantResult */
+        CovenantResult: {
+            /** Actual */
+            actual: string | null;
+            /** Metric */
+            metric: string;
+            /** Operator */
+            operator: string;
+            /** Passes */
+            passes: boolean | null;
+            /** Tested On */
+            tested_on: string | null;
+            /** Threshold */
+            threshold: string;
+        };
+        /** DealDetail */
+        DealDetail: {
+            /** Allowed Stages */
+            allowed_stages: components["schemas"]["DealStage"][];
+            /** Checklist */
+            checklist: components["schemas"]["ChecklistItem"][];
+            /** Checklist Complete */
+            checklist_complete: boolean;
+            /**
+             * Company Id
+             * Format: uuid
+             */
+            company_id: string;
+            /** Company Name */
+            company_name: string;
+            /** Currency */
+            currency: string;
+            /** Expected Close */
+            expected_close: string | null;
+            /** Has Draft Cam */
+            has_draft_cam: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Owner Name */
+            owner_name: string | null;
+            /** Probability Pct */
+            probability_pct: number;
+            product: components["schemas"]["Product"];
+            /** Requested Amount */
+            requested_amount: string;
+            stage: components["schemas"]["DealStage"];
+            /** Title */
+            title: string;
+        };
+        /** DealIn */
+        DealIn: {
+            /**
+             * Company Id
+             * Format: uuid
+             */
+            company_id: string;
+            /** Expected Close */
+            expected_close?: string | null;
+            product: components["schemas"]["Product"];
+            /** Requested Amount */
+            requested_amount: number | string;
+            /** Title */
+            title: string;
+        };
+        /** DealOut */
+        DealOut: {
+            /**
+             * Company Id
+             * Format: uuid
+             */
+            company_id: string;
+            /** Company Name */
+            company_name: string;
+            /** Currency */
+            currency: string;
+            /** Expected Close */
+            expected_close: string | null;
+            /** Has Draft Cam */
+            has_draft_cam: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Owner Name */
+            owner_name: string | null;
+            /** Probability Pct */
+            probability_pct: number;
+            product: components["schemas"]["Product"];
+            /** Requested Amount */
+            requested_amount: string;
+            stage: components["schemas"]["DealStage"];
+            /** Title */
+            title: string;
+        };
+        /** DealPatch */
+        DealPatch: {
+            /** Expected Close */
+            expected_close?: string | null;
+            /** Probability Pct */
+            probability_pct?: number | null;
+            /** Requested Amount */
+            requested_amount?: number | string | null;
+            stage?: components["schemas"]["DealStage"] | null;
+        };
+        /**
+         * DealStage
+         * @enum {string}
+         */
+        DealStage: "LEAD" | "QUALIFICATION" | "DOC_COLLECTION" | "CREDIT_UNDERWRITING" | "APPROVAL" | "DISBURSED" | "LOST";
+        /** DocumentOut */
+        DocumentOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Deal Id */
+            deal_id: string | null;
+            doc_type: components["schemas"]["DocumentType"];
+            /** Expiry Date */
+            expiry_date: string | null;
+            /** File Name */
+            file_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            verification_status: components["schemas"]["VerificationStatus"];
+        };
+        /**
+         * DocumentType
+         * @enum {string}
+         */
+        DocumentType: "TRADE_LICENSE" | "CR_CERTIFICATE" | "FINANCIAL_STATEMENT" | "BANK_STATEMENT" | "TAX_RETURN" | "UBO_DECLARATION";
+        /** EwsOut */
+        EwsOut: {
+            /**
+             * Detected At
+             * Format: date-time
+             */
+            detected_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Metrics */
+            metrics: {
+                [key: string]: unknown;
+            };
+            /** Resolved At */
+            resolved_at: string | null;
+            /** Root Cause Summary */
+            root_cause_summary: string | null;
+            severity: components["schemas"]["Severity"];
+            status: components["schemas"]["EwsStatus"];
+            trigger: components["schemas"]["EwsTrigger"];
+        };
+        /**
+         * EwsStatus
+         * @enum {string}
+         */
+        EwsStatus: "OPEN" | "INVESTIGATING" | "RESOLVED";
+        /**
+         * EwsTrigger
+         * @enum {string}
+         */
+        EwsTrigger: "CASHFLOW_DROP" | "UTILIZATION_SPIKE" | "DOC_EXPIRY" | "BOUNCED_CHEQUES" | "COVENANT_BREACH";
+        /** FacilityOut */
+        FacilityOut: {
+            /** Alert Threshold Pct */
+            alert_threshold_pct: string;
+            /** Covenants */
+            covenants: components["schemas"]["CovenantResult"][];
+            /** Days Above Alert Threshold */
+            days_above_alert_threshold: number;
+            /** History */
+            history: components["schemas"]["UtilizationPoint"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Islamic */
+            is_islamic: boolean;
+            /** Maturity Date */
+            maturity_date: string | null;
+            product: components["schemas"]["Product"];
+            /** Rate Pct */
+            rate_pct: string;
+            /** Sanctioned Limit */
+            sanctioned_limit: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /** Utilization Pct */
+            utilization_pct: string | null;
+            /** Utilized Amount */
+            utilized_amount: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** InteractionIn */
+        InteractionIn: {
+            interaction_type: components["schemas"]["InteractionType"];
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Summary */
+            summary: string;
+        };
+        /** InteractionOut */
+        InteractionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            interaction_type: components["schemas"]["InteractionType"];
+            /** Notes */
+            notes: string | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Summary */
+            summary: string;
+            /** User Name */
+            user_name: string | null;
+        };
+        /**
+         * InteractionType
+         * @enum {string}
+         */
+        InteractionType: "CALL" | "MEETING" | "EMAIL" | "SITE_VISIT";
         /**
          * KybStatus
          * @enum {string}
@@ -245,6 +770,24 @@ export interface components {
          * @enum {string}
          */
         MsmeTier: "MICRO" | "SMALL" | "MEDIUM";
+        /** OwnerOut */
+        OwnerOut: {
+            /** Full Name */
+            full_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Ubo */
+            is_ubo: boolean;
+            /** Nationality */
+            nationality: string;
+            /** Ownership Pct */
+            ownership_pct: string;
+            pep_status: components["schemas"]["ScreeningStatus"];
+            sanctions_status: components["schemas"]["ScreeningStatus"];
+        };
         /** PersonaSwitchIn */
         PersonaSwitchIn: {
             /**
@@ -254,10 +797,137 @@ export interface components {
             user_id: string;
         };
         /**
+         * Product
+         * @enum {string}
+         */
+        Product: "WORKING_CAPITAL" | "TERM_LOAN" | "TRADE_FINANCE_LC" | "LETTER_OF_GUARANTEE" | "POS_MERCHANT" | "FX_LINE" | "CASH_MANAGEMENT" | "MURABAHA" | "IJARA";
+        /**
          * Role
          * @enum {string}
          */
         Role: "RM" | "CREDIT_OFFICER" | "COMPLIANCE" | "ADMIN";
+        /**
+         * ScreeningStatus
+         * @enum {string}
+         */
+        ScreeningStatus: "CLEAR" | "HIT" | "PENDING";
+        /** SessionOut */
+        SessionOut: {
+            user: components["schemas"]["UserOut"] | null;
+        };
+        /**
+         * Severity
+         * @enum {string}
+         */
+        Severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+        /** SnapshotOut */
+        SnapshotOut: {
+            /** Avg Bank Balance */
+            avg_bank_balance: string;
+            /**
+             * Balance Change Pct
+             * @description Change in average bank balance versus the previous month
+             */
+            balance_change_pct: string | null;
+            /** Bounced Cheques */
+            bounced_cheques: number;
+            /** Current Assets */
+            current_assets: string;
+            /** Current Liabilities */
+            current_liabilities: string;
+            /** Current Ratio */
+            current_ratio: string | null;
+            /** Debt To Ebitda */
+            debt_to_ebitda: string | null;
+            /** Debt To Equity */
+            debt_to_equity: string | null;
+            /** Dscr */
+            dscr: string | null;
+            /** Ebitda */
+            ebitda: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Interest Expense */
+            interest_expense: string;
+            /** Net Profit */
+            net_profit: string;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /** Principal Repayment */
+            principal_repayment: string;
+            /** Revenue */
+            revenue: string;
+            /** Total Debt */
+            total_debt: string;
+            /** Total Equity */
+            total_equity: string;
+        };
+        /** TaskIn */
+        TaskIn: {
+            /**
+             * Assignee Id
+             * @description Defaults to you
+             */
+            assignee_id?: string | null;
+            /**
+             * Company Id
+             * Format: uuid
+             */
+            company_id: string;
+            /** Deal Id */
+            deal_id?: string | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** Title */
+            title: string;
+        };
+        /** TaskOut */
+        TaskOut: {
+            /** Assignee Id */
+            assignee_id: string | null;
+            /** Assignee Name */
+            assignee_name: string | null;
+            /**
+             * Company Id
+             * Format: uuid
+             */
+            company_id: string;
+            /** Company Name */
+            company_name: string;
+            /** Deal Id */
+            deal_id: string | null;
+            /** Due Date */
+            due_date: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            source: components["schemas"]["TaskSource"];
+            status: components["schemas"]["TaskStatus"];
+            /** Title */
+            title: string;
+        };
+        /** TaskPatch */
+        TaskPatch: {
+            status: components["schemas"]["TaskStatus"];
+        };
+        /**
+         * TaskSource
+         * @enum {string}
+         */
+        TaskSource: "MANUAL" | "AGENT";
+        /**
+         * TaskStatus
+         * @enum {string}
+         */
+        TaskStatus: "OPEN" | "DONE";
         /** UserOut */
         UserOut: {
             /** Branch */
@@ -273,6 +943,18 @@ export interface components {
             id: string;
             role: components["schemas"]["Role"];
         };
+        /** UtilizationPoint */
+        UtilizationPoint: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            /** Utilization Pct */
+            utilization_pct: string | null;
+            /** Utilized Amount */
+            utilized_amount: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -286,6 +968,11 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /**
+         * VerificationStatus
+         * @enum {string}
+         */
+        VerificationStatus: "PENDING" | "VERIFIED" | "REJECTED";
     };
     responses: never;
     parameters: never;
@@ -314,6 +1001,260 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccountListItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_account: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_documents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_ews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EwsOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_facilities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FacilityOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_financials: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SnapshotOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_interactions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InteractionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    log_interaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InteractionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InteractionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_account_tasks: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["TaskStatus"] | null;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskOut"][];
                 };
             };
             /** @description Validation Error */
@@ -471,6 +1412,158 @@ export interface operations {
             };
         };
     };
+    current_session: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+        };
+    };
+    list_deals: {
+        parameters: {
+            query?: {
+                stage?: components["schemas"]["DealStage"] | null;
+                company_id?: string | null;
+                q?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_deal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DealIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_deal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_deal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DealPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     health: {
         parameters: {
             query?: never;
@@ -509,6 +1602,106 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AppInfo"];
+                };
+            };
+        };
+    };
+    list_tasks: {
+        parameters: {
+            query?: {
+                mine?: boolean;
+                status?: components["schemas"]["TaskStatus"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

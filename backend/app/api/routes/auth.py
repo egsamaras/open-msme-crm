@@ -1,11 +1,11 @@
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from sqlalchemy import select
 
-from app.api.deps import CurrentUser, SessionDep
+from app.api.deps import CurrentUser, SessionDep, get_current_user
 from app.core.config import get_settings
 from app.core.security import create_access_token, verify_password
 from app.models import User
-from app.schemas.common import LoginIn, PersonaSwitchIn, UserOut
+from app.schemas.common import LoginIn, PersonaSwitchIn, SessionOut, UserOut
 from app.services import audit
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -45,6 +45,16 @@ async def logout(response: Response) -> None:
 @router.get("/me", response_model=UserOut)
 async def me(user: CurrentUser) -> User:
     return user
+
+
+@router.get("/session", response_model=SessionOut)
+async def current_session(request: Request, session: SessionDep) -> SessionOut:
+    """Who is signed in, or `user: null`. Unlike /me, signed-out is a normal 200 answer."""
+    try:
+        user = await get_current_user(request, session)
+    except HTTPException:
+        return SessionOut(user=None)
+    return SessionOut(user=UserOut.model_validate(user))
 
 
 @router.get("/personas", response_model=list[UserOut])

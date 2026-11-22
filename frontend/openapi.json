@@ -1,6 +1,134 @@
 {
   "components": {
     "schemas": {
+      "AccountDetail": {
+        "properties": {
+          "annual_turnover": {
+            "title": "Annual Turnover",
+            "type": "string"
+          },
+          "contacts": {
+            "items": {
+              "$ref": "#/components/schemas/ContactOut"
+            },
+            "title": "Contacts",
+            "type": "array"
+          },
+          "country": {
+            "title": "Country",
+            "type": "string"
+          },
+          "cr_number": {
+            "title": "Cr Number",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "industry": {
+            "title": "Industry",
+            "type": "string"
+          },
+          "kyb_next_review": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kyb Next Review"
+          },
+          "kyb_status": {
+            "$ref": "#/components/schemas/KybStatus"
+          },
+          "legal_name": {
+            "title": "Legal Name",
+            "type": "string"
+          },
+          "owners": {
+            "items": {
+              "$ref": "#/components/schemas/OwnerOut"
+            },
+            "title": "Owners",
+            "type": "array"
+          },
+          "risk_rating": {
+            "title": "Risk Rating",
+            "type": "integer"
+          },
+          "rm_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rm Id"
+          },
+          "rm_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rm Name"
+          },
+          "tier": {
+            "$ref": "#/components/schemas/MsmeTier"
+          },
+          "trading_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trading Name"
+          },
+          "ubo_threshold_pct": {
+            "title": "Ubo Threshold Pct",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "legal_name",
+          "trading_name",
+          "cr_number",
+          "country",
+          "industry",
+          "tier",
+          "annual_turnover",
+          "currency",
+          "risk_rating",
+          "kyb_status",
+          "kyb_next_review",
+          "rm_id",
+          "rm_name",
+          "ubo_threshold_pct",
+          "owners",
+          "contacts"
+        ],
+        "title": "AccountDetail",
+        "type": "object"
+      },
       "AccountListItem": {
         "properties": {
           "annual_turnover": {
@@ -168,6 +296,731 @@
         "title": "AuditChainOut",
         "type": "object"
       },
+      "ChecklistItem": {
+        "properties": {
+          "doc_type": {
+            "$ref": "#/components/schemas/DocumentType"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "expiry_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Date"
+          },
+          "state": {
+            "enum": [
+              "MISSING",
+              "EXPIRED",
+              "PENDING",
+              "VERIFIED",
+              "REJECTED"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "doc_type",
+          "state",
+          "document_id",
+          "expiry_date"
+        ],
+        "title": "ChecklistItem",
+        "type": "object"
+      },
+      "ContactOut": {
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_primary": {
+            "title": "Is Primary",
+            "type": "boolean"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "id",
+          "full_name",
+          "title",
+          "email",
+          "phone",
+          "is_primary"
+        ],
+        "title": "ContactOut",
+        "type": "object"
+      },
+      "CovenantResult": {
+        "properties": {
+          "actual": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual"
+          },
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          },
+          "operator": {
+            "title": "Operator",
+            "type": "string"
+          },
+          "passes": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passes"
+          },
+          "tested_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tested On"
+          },
+          "threshold": {
+            "title": "Threshold",
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric",
+          "operator",
+          "threshold",
+          "actual",
+          "passes",
+          "tested_on"
+        ],
+        "title": "CovenantResult",
+        "type": "object"
+      },
+      "DealDetail": {
+        "properties": {
+          "allowed_stages": {
+            "items": {
+              "$ref": "#/components/schemas/DealStage"
+            },
+            "title": "Allowed Stages",
+            "type": "array"
+          },
+          "checklist": {
+            "items": {
+              "$ref": "#/components/schemas/ChecklistItem"
+            },
+            "title": "Checklist",
+            "type": "array"
+          },
+          "checklist_complete": {
+            "title": "Checklist Complete",
+            "type": "boolean"
+          },
+          "company_id": {
+            "format": "uuid",
+            "title": "Company Id",
+            "type": "string"
+          },
+          "company_name": {
+            "title": "Company Name",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "expected_close": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Close"
+          },
+          "has_draft_cam": {
+            "title": "Has Draft Cam",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "owner_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Name"
+          },
+          "probability_pct": {
+            "title": "Probability Pct",
+            "type": "integer"
+          },
+          "product": {
+            "$ref": "#/components/schemas/Product"
+          },
+          "requested_amount": {
+            "title": "Requested Amount",
+            "type": "string"
+          },
+          "stage": {
+            "$ref": "#/components/schemas/DealStage"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "company_id",
+          "company_name",
+          "currency",
+          "title",
+          "product",
+          "stage",
+          "requested_amount",
+          "probability_pct",
+          "expected_close",
+          "owner_name",
+          "has_draft_cam",
+          "checklist",
+          "checklist_complete",
+          "allowed_stages"
+        ],
+        "title": "DealDetail",
+        "type": "object"
+      },
+      "DealIn": {
+        "properties": {
+          "company_id": {
+            "format": "uuid",
+            "title": "Company Id",
+            "type": "string"
+          },
+          "expected_close": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Close"
+          },
+          "product": {
+            "$ref": "#/components/schemas/Product"
+          },
+          "requested_amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Requested Amount"
+          },
+          "title": {
+            "maxLength": 255,
+            "minLength": 3,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id",
+          "title",
+          "product",
+          "requested_amount"
+        ],
+        "title": "DealIn",
+        "type": "object"
+      },
+      "DealOut": {
+        "properties": {
+          "company_id": {
+            "format": "uuid",
+            "title": "Company Id",
+            "type": "string"
+          },
+          "company_name": {
+            "title": "Company Name",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "expected_close": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Close"
+          },
+          "has_draft_cam": {
+            "title": "Has Draft Cam",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "owner_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Name"
+          },
+          "probability_pct": {
+            "title": "Probability Pct",
+            "type": "integer"
+          },
+          "product": {
+            "$ref": "#/components/schemas/Product"
+          },
+          "requested_amount": {
+            "title": "Requested Amount",
+            "type": "string"
+          },
+          "stage": {
+            "$ref": "#/components/schemas/DealStage"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "company_id",
+          "company_name",
+          "currency",
+          "title",
+          "product",
+          "stage",
+          "requested_amount",
+          "probability_pct",
+          "expected_close",
+          "owner_name",
+          "has_draft_cam"
+        ],
+        "title": "DealOut",
+        "type": "object"
+      },
+      "DealPatch": {
+        "properties": {
+          "expected_close": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Close"
+          },
+          "probability_pct": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probability Pct"
+          },
+          "requested_amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Amount"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DealStage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "DealPatch",
+        "type": "object"
+      },
+      "DealStage": {
+        "enum": [
+          "LEAD",
+          "QUALIFICATION",
+          "DOC_COLLECTION",
+          "CREDIT_UNDERWRITING",
+          "APPROVAL",
+          "DISBURSED",
+          "LOST"
+        ],
+        "title": "DealStage",
+        "type": "string"
+      },
+      "DocumentOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "deal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deal Id"
+          },
+          "doc_type": {
+            "$ref": "#/components/schemas/DocumentType"
+          },
+          "expiry_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Date"
+          },
+          "file_name": {
+            "title": "File Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "verification_status": {
+            "$ref": "#/components/schemas/VerificationStatus"
+          }
+        },
+        "required": [
+          "id",
+          "deal_id",
+          "doc_type",
+          "file_name",
+          "expiry_date",
+          "verification_status",
+          "created_at"
+        ],
+        "title": "DocumentOut",
+        "type": "object"
+      },
+      "DocumentType": {
+        "enum": [
+          "TRADE_LICENSE",
+          "CR_CERTIFICATE",
+          "FINANCIAL_STATEMENT",
+          "BANK_STATEMENT",
+          "TAX_RETURN",
+          "UBO_DECLARATION"
+        ],
+        "title": "DocumentType",
+        "type": "string"
+      },
+      "EwsOut": {
+        "properties": {
+          "detected_at": {
+            "format": "date-time",
+            "title": "Detected At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "metrics": {
+            "additionalProperties": true,
+            "title": "Metrics",
+            "type": "object"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "root_cause_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Root Cause Summary"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EwsStatus"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/EwsTrigger"
+          }
+        },
+        "required": [
+          "id",
+          "trigger",
+          "severity",
+          "status",
+          "metrics",
+          "root_cause_summary",
+          "detected_at",
+          "resolved_at"
+        ],
+        "title": "EwsOut",
+        "type": "object"
+      },
+      "EwsStatus": {
+        "enum": [
+          "OPEN",
+          "INVESTIGATING",
+          "RESOLVED"
+        ],
+        "title": "EwsStatus",
+        "type": "string"
+      },
+      "EwsTrigger": {
+        "enum": [
+          "CASHFLOW_DROP",
+          "UTILIZATION_SPIKE",
+          "DOC_EXPIRY",
+          "BOUNCED_CHEQUES",
+          "COVENANT_BREACH"
+        ],
+        "title": "EwsTrigger",
+        "type": "string"
+      },
+      "FacilityOut": {
+        "properties": {
+          "alert_threshold_pct": {
+            "title": "Alert Threshold Pct",
+            "type": "string"
+          },
+          "covenants": {
+            "items": {
+              "$ref": "#/components/schemas/CovenantResult"
+            },
+            "title": "Covenants",
+            "type": "array"
+          },
+          "days_above_alert_threshold": {
+            "title": "Days Above Alert Threshold",
+            "type": "integer"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/UtilizationPoint"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_islamic": {
+            "title": "Is Islamic",
+            "type": "boolean"
+          },
+          "maturity_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maturity Date"
+          },
+          "product": {
+            "$ref": "#/components/schemas/Product"
+          },
+          "rate_pct": {
+            "title": "Rate Pct",
+            "type": "string"
+          },
+          "sanctioned_limit": {
+            "title": "Sanctioned Limit",
+            "type": "string"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "utilization_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utilization Pct"
+          },
+          "utilized_amount": {
+            "title": "Utilized Amount",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "product",
+          "is_islamic",
+          "sanctioned_limit",
+          "utilized_amount",
+          "utilization_pct",
+          "days_above_alert_threshold",
+          "alert_threshold_pct",
+          "rate_pct",
+          "start_date",
+          "maturity_date",
+          "covenants",
+          "history"
+        ],
+        "title": "FacilityOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -180,6 +1033,106 @@
         },
         "title": "HTTPValidationError",
         "type": "object"
+      },
+      "InteractionIn": {
+        "properties": {
+          "interaction_type": {
+            "$ref": "#/components/schemas/InteractionType"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "summary": {
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "interaction_type",
+          "occurred_at",
+          "summary"
+        ],
+        "title": "InteractionIn",
+        "type": "object"
+      },
+      "InteractionOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "interaction_type": {
+            "$ref": "#/components/schemas/InteractionType"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "user_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Name"
+          }
+        },
+        "required": [
+          "id",
+          "interaction_type",
+          "occurred_at",
+          "summary",
+          "notes",
+          "user_name"
+        ],
+        "title": "InteractionOut",
+        "type": "object"
+      },
+      "InteractionType": {
+        "enum": [
+          "CALL",
+          "MEETING",
+          "EMAIL",
+          "SITE_VISIT"
+        ],
+        "title": "InteractionType",
+        "type": "string"
       },
       "KybStatus": {
         "enum": [
@@ -219,6 +1172,48 @@
         "title": "MsmeTier",
         "type": "string"
       },
+      "OwnerOut": {
+        "properties": {
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_ubo": {
+            "title": "Is Ubo",
+            "type": "boolean"
+          },
+          "nationality": {
+            "title": "Nationality",
+            "type": "string"
+          },
+          "ownership_pct": {
+            "title": "Ownership Pct",
+            "type": "string"
+          },
+          "pep_status": {
+            "$ref": "#/components/schemas/ScreeningStatus"
+          },
+          "sanctions_status": {
+            "$ref": "#/components/schemas/ScreeningStatus"
+          }
+        },
+        "required": [
+          "id",
+          "full_name",
+          "nationality",
+          "ownership_pct",
+          "is_ubo",
+          "pep_status",
+          "sanctions_status"
+        ],
+        "title": "OwnerOut",
+        "type": "object"
+      },
       "PersonaSwitchIn": {
         "properties": {
           "user_id": {
@@ -233,6 +1228,21 @@
         "title": "PersonaSwitchIn",
         "type": "object"
       },
+      "Product": {
+        "enum": [
+          "WORKING_CAPITAL",
+          "TERM_LOAN",
+          "TRADE_FINANCE_LC",
+          "LETTER_OF_GUARANTEE",
+          "POS_MERCHANT",
+          "FX_LINE",
+          "CASH_MANAGEMENT",
+          "MURABAHA",
+          "IJARA"
+        ],
+        "title": "Product",
+        "type": "string"
+      },
       "Role": {
         "enum": [
           "RM",
@@ -241,6 +1251,355 @@
           "ADMIN"
         ],
         "title": "Role",
+        "type": "string"
+      },
+      "ScreeningStatus": {
+        "enum": [
+          "CLEAR",
+          "HIT",
+          "PENDING"
+        ],
+        "title": "ScreeningStatus",
+        "type": "string"
+      },
+      "SessionOut": {
+        "properties": {
+          "user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "user"
+        ],
+        "title": "SessionOut",
+        "type": "object"
+      },
+      "Severity": {
+        "enum": [
+          "LOW",
+          "MEDIUM",
+          "HIGH",
+          "CRITICAL"
+        ],
+        "title": "Severity",
+        "type": "string"
+      },
+      "SnapshotOut": {
+        "properties": {
+          "avg_bank_balance": {
+            "title": "Avg Bank Balance",
+            "type": "string"
+          },
+          "balance_change_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Change in average bank balance versus the previous month",
+            "title": "Balance Change Pct"
+          },
+          "bounced_cheques": {
+            "title": "Bounced Cheques",
+            "type": "integer"
+          },
+          "current_assets": {
+            "title": "Current Assets",
+            "type": "string"
+          },
+          "current_liabilities": {
+            "title": "Current Liabilities",
+            "type": "string"
+          },
+          "current_ratio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Ratio"
+          },
+          "debt_to_ebitda": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Debt To Ebitda"
+          },
+          "debt_to_equity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Debt To Equity"
+          },
+          "dscr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dscr"
+          },
+          "ebitda": {
+            "title": "Ebitda",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "interest_expense": {
+            "title": "Interest Expense",
+            "type": "string"
+          },
+          "net_profit": {
+            "title": "Net Profit",
+            "type": "string"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "principal_repayment": {
+            "title": "Principal Repayment",
+            "type": "string"
+          },
+          "revenue": {
+            "title": "Revenue",
+            "type": "string"
+          },
+          "total_debt": {
+            "title": "Total Debt",
+            "type": "string"
+          },
+          "total_equity": {
+            "title": "Total Equity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "period_end",
+          "revenue",
+          "ebitda",
+          "net_profit",
+          "interest_expense",
+          "principal_repayment",
+          "total_debt",
+          "total_equity",
+          "current_assets",
+          "current_liabilities",
+          "avg_bank_balance",
+          "bounced_cheques",
+          "dscr",
+          "debt_to_equity",
+          "debt_to_ebitda",
+          "current_ratio",
+          "balance_change_pct"
+        ],
+        "title": "SnapshotOut",
+        "type": "object"
+      },
+      "TaskIn": {
+        "properties": {
+          "assignee_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Defaults to you",
+            "title": "Assignee Id"
+          },
+          "company_id": {
+            "format": "uuid",
+            "title": "Company Id",
+            "type": "string"
+          },
+          "deal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deal Id"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "title": {
+            "maxLength": 255,
+            "minLength": 3,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id",
+          "title"
+        ],
+        "title": "TaskIn",
+        "type": "object"
+      },
+      "TaskOut": {
+        "properties": {
+          "assignee_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignee Id"
+          },
+          "assignee_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignee Name"
+          },
+          "company_id": {
+            "format": "uuid",
+            "title": "Company Id",
+            "type": "string"
+          },
+          "company_name": {
+            "title": "Company Name",
+            "type": "string"
+          },
+          "deal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deal Id"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/TaskSource"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "company_id",
+          "company_name",
+          "deal_id",
+          "assignee_id",
+          "assignee_name",
+          "title",
+          "due_date",
+          "status",
+          "source"
+        ],
+        "title": "TaskOut",
+        "type": "object"
+      },
+      "TaskPatch": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "TaskPatch",
+        "type": "object"
+      },
+      "TaskSource": {
+        "enum": [
+          "MANUAL",
+          "AGENT"
+        ],
+        "title": "TaskSource",
+        "type": "string"
+      },
+      "TaskStatus": {
+        "enum": [
+          "OPEN",
+          "DONE"
+        ],
+        "title": "TaskStatus",
         "type": "string"
       },
       "UserOut": {
@@ -283,6 +1642,37 @@
         "title": "UserOut",
         "type": "object"
       },
+      "UtilizationPoint": {
+        "properties": {
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "utilization_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utilization Pct"
+          },
+          "utilized_amount": {
+            "title": "Utilized Amount",
+            "type": "string"
+          }
+        },
+        "required": [
+          "as_of",
+          "utilized_amount",
+          "utilization_pct"
+        ],
+        "title": "UtilizationPoint",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -322,6 +1712,15 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "VerificationStatus": {
+        "enum": [
+          "PENDING",
+          "VERIFIED",
+          "REJECTED"
+        ],
+        "title": "VerificationStatus",
+        "type": "string"
       }
     }
   },
@@ -390,6 +1789,398 @@
           }
         },
         "summary": "List Accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/accounts/{company_id}": {
+      "get": {
+        "operationId": "get_account",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Account",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/accounts/{company_id}/documents": {
+      "get": {
+        "operationId": "get_documents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentOut"
+                  },
+                  "title": "Response Get Documents",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Documents",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/accounts/{company_id}/ews": {
+      "get": {
+        "operationId": "get_ews",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EwsOut"
+                  },
+                  "title": "Response Get Ews",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Ews",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/accounts/{company_id}/facilities": {
+      "get": {
+        "operationId": "get_facilities",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FacilityOut"
+                  },
+                  "title": "Response Get Facilities",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Facilities",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/accounts/{company_id}/financials": {
+      "get": {
+        "operationId": "get_financials",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SnapshotOut"
+                  },
+                  "title": "Response Get Financials",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Financials",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/accounts/{company_id}/interactions": {
+      "get": {
+        "operationId": "get_interactions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InteractionOut"
+                  },
+                  "title": "Response Get Interactions",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Interactions",
+        "tags": [
+          "accounts"
+        ]
+      },
+      "post": {
+        "operationId": "log_interaction",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InteractionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InteractionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Log Interaction",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/accounts/{company_id}/tasks": {
+      "get": {
+        "operationId": "get_account_tasks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TaskStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TaskOut"
+                  },
+                  "title": "Response Get Account Tasks",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Account Tasks",
         "tags": [
           "accounts"
         ]
@@ -560,6 +2351,248 @@
         ]
       }
     },
+    "/api/auth/session": {
+      "get": {
+        "description": "Who is signed in, or `user: null`. Unlike /me, signed-out is a normal 200 answer.",
+        "operationId": "current_session",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Current Session",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/deals": {
+      "get": {
+        "operationId": "list_deals",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "stage",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DealStage"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Stage"
+            }
+          },
+          {
+            "in": "query",
+            "name": "company_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Company Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DealOut"
+                  },
+                  "title": "Response List Deals",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Deals",
+        "tags": [
+          "deals"
+        ]
+      },
+      "post": {
+        "operationId": "create_deal",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DealIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Deal",
+        "tags": [
+          "deals"
+        ]
+      }
+    },
+    "/api/deals/{deal_id}": {
+      "get": {
+        "operationId": "get_deal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "deal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Deal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Deal",
+        "tags": [
+          "deals"
+        ]
+      },
+      "patch": {
+        "operationId": "update_deal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "deal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Deal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DealPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DealDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Deal",
+        "tags": [
+          "deals"
+        ]
+      }
+    },
     "/api/health": {
       "get": {
         "operationId": "health",
@@ -603,6 +2636,161 @@
         "summary": "Info",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/tasks": {
+      "get": {
+        "operationId": "list_tasks",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "mine",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Mine",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TaskStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TaskOut"
+                  },
+                  "title": "Response List Tasks",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Tasks",
+        "tags": [
+          "tasks"
+        ]
+      },
+      "post": {
+        "operationId": "create_task",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Task",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
+    "/api/tasks/{task_id}": {
+      "patch": {
+        "operationId": "update_task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Task",
+        "tags": [
+          "tasks"
         ]
       }
     }

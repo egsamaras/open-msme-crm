@@ -32,7 +32,7 @@ describe('App', () => {
   it('shows the sign-in form when signed out, and signs in', async () => {
     let signedIn = false
     renderApp({
-      'GET /api/auth/me': () => (signedIn ? json(200, RM) : json(401, { detail: 'Not signed in' })),
+      'GET /api/auth/session': () => json(200, { user: signedIn ? RM : null }),
       'GET /api/info': () => json(200, { environment: 'test', llm_provider: 'mock', dev_persona_switch: false, default_currency: 'BHD' }),
       'POST /api/auth/login': () => { signedIn = true; return json(200, RM) },
       'GET /api/accounts': () => json(200, [ACCOUNT]),
@@ -48,7 +48,7 @@ describe('App', () => {
 
   it('shows a wrong-password message', async () => {
     renderApp({
-      'GET /api/auth/me': () => json(401, { detail: 'Not signed in' }),
+      'GET /api/auth/session': () => json(200, { user: null }),
       'GET /api/info': () => json(200, { environment: 'test', llm_provider: 'mock', dev_persona_switch: false, default_currency: 'BHD' }),
       'POST /api/auth/login': () => json(401, { detail: 'Wrong email or password' }),
     })

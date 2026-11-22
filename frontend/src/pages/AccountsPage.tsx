@@ -1,5 +1,6 @@
 import { Search } from 'lucide-react'
 import { useDeferredValue, useState } from 'react'
+import { Link } from 'react-router'
 import type { AccountListItem } from '@/api/client'
 import { Badge, Card, EmptyState, ErrorState, Loading, PageHeader } from '@/components/ui'
 import { formatMoney, formatPct, percentOf, titleCase } from '@/lib/format'
@@ -69,7 +70,9 @@ export function AccountsPage() {
                 {accounts.data.map((a) => (
                   <tr key={a.id} className="hover:bg-slate-50">
                     <td className="min-w-44 px-3 py-3">
-                      <div className="font-medium">{a.trading_name ?? a.legal_name}</div>
+                      <Link to={`/accounts/${a.id}`} className="font-medium text-brand-700 hover:underline">
+                        {a.trading_name ?? a.legal_name}
+                      </Link>
                       <div className="whitespace-nowrap text-xs text-slate-500">
                         {a.cr_number} · {a.country}
                       </div>

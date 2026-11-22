@@ -1,4 +1,6 @@
 import { Link } from 'react-router'
+import { useMyTasks } from '@/api/queries'
+import { TaskList } from '@/components/TaskList'
 import type { User } from '@/api/client'
 import { Card, ErrorState, Loading, PageHeader } from '@/components/ui'
 import { percentOf, toNumber } from '@/lib/format'
@@ -16,6 +18,7 @@ function Kpi({ label, value, hint }: { label: string; value: string; hint?: stri
 
 export function CommandCentrePage({ user }: { user: User }) {
   const accounts = useAccounts('')
+  const tasks = useMyTasks()
   const first = user.full_name.split(' ')[0]
 
   return (
@@ -46,13 +49,26 @@ export function CommandCentrePage({ user }: { user: User }) {
           )
         })()
       )}
-      <Card className="mt-6 p-5 text-sm text-slate-600">
-        <p className="font-medium text-slate-900">What's next</p>
-        <p className="mt-1">
-          The approval queue, early-warning scan and credit-memo agent arrive in Phases 3–4. Until then,
-          browse the <Link to="/accounts" className="text-brand-700 underline">accounts</Link>.
-        </p>
-      </Card>
+      <div className="mt-6 grid gap-4 lg:grid-cols-[3fr_2fr]">
+        <Card className="p-5">
+          <h2 className="mb-2 text-sm font-semibold">My open tasks</h2>
+          {tasks.isPending ? (
+            <Loading />
+          ) : tasks.isError ? (
+            <ErrorState error={tasks.error} onRetry={() => void tasks.refetch()} />
+          ) : (
+            <TaskList tasks={tasks.data.filter((t) => t.status === 'OPEN')} />
+          )}
+        </Card>
+        <Card className="p-5 text-sm text-slate-600">
+          <p className="font-medium text-slate-900">What's next</p>
+          <p className="mt-1">
+            The approval queue, early-warning scan and credit-memo agent arrive in Phases 3–4. Until then, explore the{' '}
+            <Link to="/accounts" className="text-brand-700 underline">accounts</Link> and the{' '}
+            <Link to="/deals" className="text-brand-700 underline">pipeline</Link>.
+          </p>
+        </Card>
+      </div>
     </>
   )
 }
