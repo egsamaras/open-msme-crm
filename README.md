@@ -1,5 +1,7 @@
 # Open MSME CRM
 
+[![CI](https://github.com/egsamaras/open-msme-crm/actions/workflows/ci.yml/badge.svg)](https://github.com/egsamaras/open-msme-crm/actions/workflows/ci.yml)
+
 **An open-source, agentic CRM for MSME corporate banking, where AI drafts and people decide.**
 
 Relationship managers who serve small and medium businesses carry hundreds of accounts. Much of
@@ -49,7 +51,7 @@ React 19 · TypeScript · Vite · Tailwind CSS v4 · TanStack Query · types gen
 You need Docker, [uv](https://docs.astral.sh/uv/) and Node.js 22+.
 
 ```bash
-git clone <this repo> open-msme-crm && cd open-msme-crm
+git clone https://github.com/egsamaras/open-msme-crm.git && cd open-msme-crm
 docker compose up -d db
 ```
 
