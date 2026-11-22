@@ -414,6 +414,7 @@ def build(today: date, password_hash: str) -> list[Base]:
 
         # Six monthly snapshots of raw inputs.
         total_debt = money(sum(lim for _, _, lim in facilities) * Decimal("0.6"))
+        balances: list[Decimal] = []
         for m, period_end in enumerate(month_ends(today, 6)):
             season = Decimal(str(1 + 0.08 * ((m % 3) - 1)))
             revenue = money(monthly_rev * season * Decimal(str(rng.uniform(0.95, 1.05))))
@@ -422,7 +423,9 @@ def build(today: date, password_hash: str) -> list[Base]:
             principal = money(total_debt / 48)
             balance = money(revenue * Decimal(str(rng.uniform(0.32, 0.38))))
             if c.anomaly == "cashflow_drop" and m >= 4:
-                balance = money(balance * (Decimal("0.75") if m == 4 else Decimal("0.6")))
+                # Anchor to month 3 so seasonality can't dilute it: -20%, then -38% (> 25% rule).
+                balance = money(balances[3] * (Decimal("0.80") if m == 4 else Decimal("0.62")))
+            balances.append(balance)
             bounced = 3 if c.anomaly == "bounced_cheques" and m == 5 else 0
             rows.append(
                 FinancialSnapshot(

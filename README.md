@@ -10,9 +10,9 @@ trouble too late. This project shows how AI agents can take that work on **witho
 alone**: every action an agent proposes waits in an approval queue for a person to edit, approve
 or reject it, and every step is written to a tamper-evident audit trail.
 
-> **Status: Phase 1 of 5 (foundation).** Data model, migrations, synthetic GCC portfolio, auth
-> and roles, audit chain, and the app shell work today. The agents arrive in Phases 3–4 — see the
-> [roadmap](#roadmap).
+> **Status: Phase 2 of 5 done.** The core CRM works today: account 360° view with facility and
+> financial charts, pipeline board with document checklists, interactions and tasks, on top of the
+> Phase 1 foundation. The agents arrive in Phases 3–4 — see the [roadmap](#roadmap).
 >
 > **Reference implementation, not production banking software.** Synthetic data only. See
 > [non-goals](#non-goals).
@@ -104,7 +104,7 @@ for AI coding assistants (and humans) contributing to the repo.
 ## Roadmap
 
 - [x] **Phase 1 — Foundation:** schema and migrations, seed, auth and roles, audit chain, app shell.
-- [ ] **Phase 2 — Core CRM:** account 360°, pipeline, financial charts, documents, interactions, tasks.
+- [x] **Phase 2 — Core CRM:** account 360°, pipeline, financial charts, documents, interactions, tasks, tested financial maths.
 - [ ] **Phase 3 — Agent infrastructure:** checkpointer, LLM providers, tracing, approvals with four-eyes, inspection drawer.
 - [ ] **Phase 4 — The four agents.**
 - [ ] **Phase 5 — Polish:** Playwright end-to-end flows, screenshots.

@@ -20,6 +20,7 @@ uv run alembic upgrade head
 uv run python -m app.db.seed                # idempotent
 uv run uvicorn app.main:app --reload --port 8000
 uv run ruff check . && uv run ruff format --check . && uv run mypy app && uv run pytest
+uv run pytest --cov=app.services.financial_math --cov-fail-under=100   # CI gate: maths stays at 100%
 ```
 
 Frontend (run from `frontend/`):

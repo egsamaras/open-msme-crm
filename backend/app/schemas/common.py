@@ -19,6 +19,10 @@ class UserOut(OrmModel):
     branch: str | None
 
 
+class SessionOut(BaseModel):
+    user: UserOut | None
+
+
 class LoginIn(BaseModel):
     # Plain str: demo accounts use the reserved .local domain, which EmailStr rejects.
     email: str = Field(min_length=3, max_length=255)

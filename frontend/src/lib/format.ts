@@ -46,3 +46,46 @@ export const ROLE_LABEL: Record<string, string> = {
 export function titleCase(value: string): string {
   return value.toLowerCase().replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
 }
+
+export const PRODUCT_LABEL: Record<string, string> = {
+  WORKING_CAPITAL: 'Working capital',
+  TERM_LOAN: 'Term loan',
+  TRADE_FINANCE_LC: 'Trade finance (LC)',
+  LETTER_OF_GUARANTEE: 'Letter of guarantee',
+  POS_MERCHANT: 'POS merchant',
+  FX_LINE: 'FX line',
+  CASH_MANAGEMENT: 'Cash management',
+  MURABAHA: 'Murabaha',
+  IJARA: 'Ijara',
+}
+
+export const STAGE_LABEL: Record<string, string> = {
+  LEAD: 'Lead',
+  QUALIFICATION: 'Qualification',
+  DOC_COLLECTION: 'Documents',
+  CREDIT_UNDERWRITING: 'Underwriting',
+  APPROVAL: 'Approval',
+  DISBURSED: 'Disbursed',
+  LOST: 'Lost',
+}
+
+export const DOC_LABEL: Record<string, string> = {
+  TRADE_LICENSE: 'Trade licence',
+  CR_CERTIFICATE: 'CR certificate',
+  FINANCIAL_STATEMENT: 'Financial statements',
+  BANK_STATEMENT: 'Bank statements',
+  TAX_RETURN: 'Tax return',
+  UBO_DECLARATION: 'UBO declaration',
+}
+
+export function formatRatio(value: string | null | undefined, digits = 2): string {
+  return value == null ? '—' : `${toNumber(value).toFixed(digits)}×`
+}
+
+export function formatMonth(iso: string): string {
+  return new Intl.DateTimeFormat('en-GB', { month: 'short', year: '2-digit' }).format(new Date(iso))
+}
+
+export function formatDayMonth(iso: string): string {
+  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(new Date(iso))
+}

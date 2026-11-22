@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, ApiError, unwrap, type User } from '@/api/client'
+import { api, unwrap, type User } from '@/api/client'
 
 export const meKey = ['auth', 'me'] as const
 
@@ -7,14 +7,8 @@ export const meKey = ['auth', 'me'] as const
 export function useMe() {
   return useQuery({
     queryKey: meKey,
-    queryFn: async (): Promise<User | null> => {
-      try {
-        return unwrap(await api.GET('/api/auth/me'))
-      } catch (e) {
-        if (e instanceof ApiError && e.status === 401) return null
-        throw e
-      }
-    },
+    // /session answers 200 with user: null when signed out, so no 401 noise in the console.
+    queryFn: async (): Promise<User | null> => unwrap(await api.GET('/api/auth/session')).user ?? null,
     staleTime: 60_000,
   })
 }

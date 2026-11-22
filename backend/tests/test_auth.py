@@ -41,3 +41,11 @@ async def test_dev_persona_switch(client: AsyncClient) -> None:
     r = await client.post("/api/auth/dev-switch", json={"user_id": credit["id"]})
     assert r.status_code == 200
     assert (await client.get("/api/auth/me")).json()["role"] == "CREDIT_OFFICER"
+
+
+async def test_session_endpoint_is_200_when_signed_out(client: AsyncClient) -> None:
+    r = await client.get("/api/auth/session")
+    assert r.status_code == 200
+    assert r.json() == {"user": None}
+    await login(client, "rm@demo.local")
+    assert (await client.get("/api/auth/session")).json()["user"]["role"] == "RM"

@@ -1,5 +1,5 @@
 import { createBrowserRouter, RouterProvider } from 'react-router'
-import { useMemo } from 'react'
+import { lazy, Suspense, useMemo, type ReactNode } from 'react'
 import type { User } from '@/api/client'
 import { useMe } from '@/auth'
 import { Layout } from '@/components/Layout'
@@ -9,6 +9,14 @@ import { CommandCentrePage } from '@/pages/CommandCentrePage'
 import { LoginPage } from '@/pages/LoginPage'
 import { PlaceholderPage } from '@/pages/PlaceholderPage'
 
+// Chart-heavy pages load on demand to keep the first load small.
+const AccountPage = lazy(() => import('@/pages/account/AccountPage').then((m) => ({ default: m.AccountPage })))
+const PipelinePage = lazy(() => import('@/pages/pipeline/PipelinePage').then((m) => ({ default: m.PipelinePage })))
+
+function Lazy({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<Loading />}>{children}</Suspense>
+}
+
 function buildRouter(user: User) {
   return createBrowserRouter([
     {
@@ -16,14 +24,8 @@ function buildRouter(user: User) {
       children: [
         { index: true, element: <CommandCentrePage user={user} /> },
         { path: 'accounts', element: <AccountsPage /> },
-        {
-          path: 'deals',
-          element: (
-            <PlaceholderPage title="Pipeline" phase={2}>
-              Kanban and table views of every deal, with a document checklist and one-click credit memo drafting.
-            </PlaceholderPage>
-          ),
-        },
+        { path: 'accounts/:id', element: <Lazy><AccountPage /></Lazy> },
+        { path: 'deals', element: <Lazy><PipelinePage /></Lazy> },
         {
           path: 'risk',
           element: (
