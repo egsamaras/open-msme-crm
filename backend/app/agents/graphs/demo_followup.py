@@ -19,7 +19,7 @@ from app.agents.llm import mock_handler
 from app.agents.runtime import register_graph
 from app.db.session import get_sessionmaker
 from app.models import Company, Facility, FinancialSnapshot
-from app.models.enums import ActionType, PeriodType
+from app.models.enums import PRODUCT_LABEL, ActionType, PeriodType, Product
 from app.services import financial_math as fm
 
 AGENT = "demo_followup"
@@ -127,7 +127,7 @@ def _mock_draft(facts: dict[str, Any]) -> FollowUpDraft:
         key=lambda f: float(f["utilization_pct"]) if f["utilization_pct"] != "None" else -1.0,
     )
     name = facts["company"]["name"]
-    product = busiest["product"].replace("_", " ").lower()
+    product = PRODUCT_LABEL[Product(busiest["product"])]
     return FollowUpDraft(
         title=f"Call {name} about {product} usage ({busiest['utilization_pct']}% drawn)",
         due_in_days=3,

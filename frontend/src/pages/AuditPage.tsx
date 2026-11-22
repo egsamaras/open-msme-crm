@@ -53,8 +53,10 @@ export function AuditPage() {
                 {rows.map((e) => (
                   <tr key={e.seq} className="align-top">
                     <td className="px-3 py-2 tabular-nums text-slate-400">{e.seq}</td>
-                    <td className="whitespace-nowrap px-3 py-2 tabular-nums">{new Date(e.occurred_at).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'medium' })}</td>
-                    <td className="whitespace-nowrap px-3 py-2">
+                    <td className="whitespace-nowrap px-3 py-2 tabular-nums">
+                      {new Date(e.occurred_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </td>
+                    <td className="px-3 py-2">
                       {e.actor_agent ? (
                         <span className="inline-flex items-center gap-1 text-violet-700"><Bot className="size-3.5" aria-hidden /> {e.actor_agent}{e.actor_name && <span className="text-slate-500"> for {e.actor_name}</span>}</span>
                       ) : (
@@ -64,7 +66,7 @@ export function AuditPage() {
                     <td className="px-3 py-2"><code className="text-xs">{e.action}</code></td>
                     <td className="px-3 py-2">
                       <details>
-                        <summary className="cursor-pointer text-xs text-slate-500">{e.entity_type}</summary>
+                        <summary className="cursor-pointer whitespace-nowrap text-xs text-slate-500">{e.entity_type.replace('_', ' ')}</summary>
                         <pre className="mt-1 max-w-md overflow-auto rounded bg-slate-50 p-2 text-xs">{JSON.stringify(e.payload, null, 2)}</pre>
                       </details>
                     </td>

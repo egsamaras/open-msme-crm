@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Company, Deal, Document, Facility, FinancialSnapshot
+from app.models.enums import PRODUCT_LABEL
 from app.schemas.agents import CitedRecord
 
 
@@ -28,7 +29,7 @@ async def describe_records(session: AsyncSession, ids: Iterable[uuid.UUID]) -> l
         out[f.id] = CitedRecord(
             id=f.id,
             kind="Facility",
-            label=f"{name} · {f.product.value.replace('_', ' ').title()}",
+            label=f"{name} · {PRODUCT_LABEL[f.product][:1].upper()}{PRODUCT_LABEL[f.product][1:]}",
             href=f"/accounts/{f.company_id}",
         )
     for s, name in await session.execute(
