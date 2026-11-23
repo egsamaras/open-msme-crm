@@ -3252,6 +3252,50 @@
         ]
       }
     },
+    "/api/agents/briefing/{company_id}": {
+      "post": {
+        "description": "Read-only briefing for a client meeting. Follow its progress on the run's /stream.",
+        "operationId": "start_briefing",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "company_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Company Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Briefing",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
     "/api/agents/cam/{deal_id}": {
       "post": {
         "description": "Draft a credit memo for a deal in underwriting. A credit officer reviews it (four-eyes).",

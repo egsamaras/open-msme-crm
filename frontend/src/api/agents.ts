@@ -47,6 +47,13 @@ export function useAgentRun(id: string | null) {
   })
 }
 
+export function useStartBriefing(companyId: string) {
+  return useMutation({
+    mutationFn: async () =>
+      unwrap(await api.POST('/api/agents/briefing/{company_id}', { params: { path: { company_id: companyId } } })),
+  })
+}
+
 export function useStartDemoAgent(companyId: string) {
   return useMutation({
     mutationFn: async () =>

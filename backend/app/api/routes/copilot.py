@@ -1,4 +1,4 @@
-"""Start the account co-pilot agents: credit memo drafting and (later) briefings."""
+"""Start the account co-pilot agents: pre-meeting briefings and credit memo drafting."""
 
 import uuid
 from typing import Annotated
@@ -7,7 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 
 from app.agents import runtime
-from app.api.deps import SessionDep, require_roles
+from app.api.deps import CurrentUser, SessionDep, require_roles
 from app.models import AgentRun, ApprovalItem, Company, Deal, User
 from app.models.enums import ActionType, AgentRunStatus, ApprovalStatus, DealStage, Role
 from app.schemas.agents import AgentRunSummary
@@ -100,4 +100,26 @@ async def start_cam(
         graph_input={"deal_id": str(deal_id)},
         company=company,
         deal_id=deal_id,
+    )
+
+
+@router.post(
+    "/api/agents/briefing/{company_id}",
+    response_model=AgentRunSummary,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def start_briefing(
+    company_id: uuid.UUID, background: BackgroundTasks, session: SessionDep, user: CurrentUser
+) -> AgentRunSummary:
+    """Read-only briefing for a client meeting. Follow its progress on the run's /stream."""
+    company = await session.get(Company, company_id)
+    if company is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such account")
+    return await _start(
+        session,
+        background,
+        user,
+        agent="briefing",
+        graph_input={"company_id": str(company_id)},
+        company=company,
     )
