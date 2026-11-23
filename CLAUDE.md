@@ -54,7 +54,11 @@ npm run typecheck && npm run lint && npm run test   # lint = oxlint
   `app/services/audit.py`, which maintains the hash chain.
 - **RBAC on the server** via `Depends(require_roles(...))`. Frontend role checks are cosmetic only.
 - **Mock mode (`LLM_PROVIDER=mock`) runs the real graphs**, checkpointer and interrupts; only the LLM
-  call is faked. Tests always use mock mode.
+  call is faked. Tests always use mock mode. Every LLM task needs a `@mock_handler` in its graph module.
+- **New agent:** add a module under `app/agents/graphs/`, decorate the builder with `@register_graph`,
+  import it in `app/agents/graphs/__init__.py`, use `ctx.generate(..., allowed_sources=...)` for LLM
+  calls and `add_approval_step` for anything that changes state. New action types need a payload
+  schema and an idempotent applier in `app/agents/actions.py`.
 - **Frontend types come from the API.** Change the Pydantic schema, then run `npm run generate:api`.
   Never hand-write duplicate types.
 - Thin route handlers; logic lives in `app/services/` and `app/agents/`.

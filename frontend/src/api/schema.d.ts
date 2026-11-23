@@ -141,6 +141,162 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/agent-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runs */
+        get: operations["list_runs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agent-runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Run */
+        get: operations["get_run"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agent-runs/{run_id}/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream Run
+         * @description Server-Sent Events: trace events as they're written, then the final status.
+         */
+        get: operations["stream_run"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Approvals */
+        get: operations["list_approvals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/approvals/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Count Approvals */
+        get: operations["count_approvals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/approvals/{approval_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Approval */
+        get: operations["get_approval"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/approvals/{approval_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve Approval */
+        post: operations["resolve_approval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/audit/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Count Audit Events */
+        get: operations["count_audit_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/audit/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Audit Events */
+        get: operations["list_audit_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/audit/verify": {
         parameters: {
             query?: never;
@@ -305,6 +461,26 @@ export interface paths {
         patch: operations["update_deal"];
         trace?: never;
     };
+    "/api/dev/agents/demo-followup/{company_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Demo Followup
+         * @description Development only: run the demo agent, which proposes one follow-up task for approval.
+         */
+        post: operations["start_demo_followup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -452,6 +628,80 @@ export interface components {
             /** Trading Name */
             trading_name: string | null;
         };
+        /**
+         * ActionType
+         * @enum {string}
+         */
+        ActionType: "SEND_EMAIL" | "CREATE_TASK" | "ESCALATE_EWS" | "SUBMIT_CAM" | "FLAG_KYB" | "UPDATE_KYB_RECORD";
+        /** AgentRunDetail */
+        AgentRunDetail: {
+            /** Agent Name */
+            agent_name: string;
+            /** Approval Ids */
+            approval_ids: string[];
+            /** Cited Records */
+            cited_records: components["schemas"]["CitedRecord"][];
+            /** Company Id */
+            company_id: string | null;
+            /** Company Name */
+            company_name: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Deal Id */
+            deal_id: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            status: components["schemas"]["AgentRunStatus"];
+            /** Thread Id */
+            thread_id: string;
+            /** Trace */
+            trace: {
+                [key: string]: unknown;
+            }[];
+            /** Triggered By Name */
+            triggered_by_name: string | null;
+        };
+        /**
+         * AgentRunStatus
+         * @enum {string}
+         */
+        AgentRunStatus: "RUNNING" | "AWAITING_APPROVAL" | "COMPLETED" | "FAILED" | "REJECTED";
+        /** AgentRunSummary */
+        AgentRunSummary: {
+            /** Agent Name */
+            agent_name: string;
+            /** Company Id */
+            company_id: string | null;
+            /** Company Name */
+            company_name: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Deal Id */
+            deal_id: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            status: components["schemas"]["AgentRunStatus"];
+            /** Thread Id */
+            thread_id: string;
+            /** Triggered By Name */
+            triggered_by_name: string | null;
+        };
         /** AppInfo */
         AppInfo: {
             /** Default Currency */
@@ -463,6 +713,67 @@ export interface components {
             /** Llm Provider */
             llm_provider: string;
         };
+        /** ApprovalCount */
+        ApprovalCount: {
+            /** Pending For Me */
+            pending_for_me: number;
+            /** Pending Total */
+            pending_total: number;
+        };
+        /** ApprovalOut */
+        ApprovalOut: {
+            action_type: components["schemas"]["ActionType"];
+            /** Can Review */
+            can_review: boolean;
+            /** Company Id */
+            company_id: string | null;
+            /** Company Name */
+            company_name: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Edited Payload */
+            edited_payload: {
+                [key: string]: unknown;
+            } | null;
+            /** Four Eyes */
+            four_eyes: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Initiator Id */
+            initiator_id: string | null;
+            /** Initiator Name */
+            initiator_name: string | null;
+            /** Proposed Payload */
+            proposed_payload: {
+                [key: string]: unknown;
+            };
+            /** Required Roles */
+            required_roles: components["schemas"]["Role"][];
+            /** Resolved At */
+            resolved_at: string | null;
+            /**
+             * Review Blocker
+             * @description Why you can't review this, if you can't
+             */
+            review_blocker: string | null;
+            /** Review Note */
+            review_note: string | null;
+            /** Reviewer Name */
+            reviewer_name: string | null;
+            run: components["schemas"]["AgentRunSummary"];
+            status: components["schemas"]["ApprovalStatus"];
+        };
+        /**
+         * ApprovalStatus
+         * @enum {string}
+         */
+        ApprovalStatus: "PENDING" | "APPROVED" | "EDITED_AND_APPROVED" | "REJECTED";
         /** AuditChainOut */
         AuditChainOut: {
             /** Events Checked */
@@ -471,6 +782,32 @@ export interface components {
             first_bad_seq: number | null;
             /** Ok */
             ok: boolean;
+        };
+        /** AuditEventOut */
+        AuditEventOut: {
+            /** Action */
+            action: string;
+            /** Actor Agent */
+            actor_agent: string | null;
+            /** Actor Name */
+            actor_name: string | null;
+            /** Entity Id */
+            entity_id: string | null;
+            /** Entity Type */
+            entity_type: string;
+            /** Hash */
+            hash: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Seq */
+            seq: number;
         };
         /** ChecklistItem */
         ChecklistItem: {
@@ -484,6 +821,20 @@ export interface components {
              * @enum {string}
              */
             state: "MISSING" | "EXPIRED" | "PENDING" | "VERIFIED" | "REJECTED";
+        };
+        /** CitedRecord */
+        CitedRecord: {
+            /** Href */
+            href: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Label */
+            label: string;
         };
         /** ContactOut */
         ContactOut: {
@@ -801,6 +1152,23 @@ export interface components {
          * @enum {string}
          */
         Product: "WORKING_CAPITAL" | "TERM_LOAN" | "TRADE_FINANCE_LC" | "LETTER_OF_GUARANTEE" | "POS_MERCHANT" | "FX_LINE" | "CASH_MANAGEMENT" | "MURABAHA" | "IJARA";
+        /** ResolveIn */
+        ResolveIn: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "APPROVE" | "REJECT";
+            /** Note */
+            note?: string | null;
+            /**
+             * Payload
+             * @description Edited payload; if it differs from the proposal it's an edit
+             */
+            payload?: {
+                [key: string]: unknown;
+            } | null;
+        };
         /**
          * Role
          * @enum {string}
@@ -1268,6 +1636,272 @@ export interface operations {
             };
         };
     };
+    list_runs: {
+        parameters: {
+            query?: {
+                company_id?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stream_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_approvals: {
+        parameters: {
+            query?: {
+                state?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    count_approvals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalCount"];
+                };
+            };
+        };
+    };
+    get_approval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                approval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resolve_approval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                approval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    count_audit_events: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+        };
+    };
+    list_audit_events: {
+        parameters: {
+            query?: {
+                before_seq?: number | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEventOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     verify_audit_chain: {
         parameters: {
             query?: never;
@@ -1551,6 +2185,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DealDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_demo_followup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunSummary"];
                 };
             };
             /** @description Validation Error */

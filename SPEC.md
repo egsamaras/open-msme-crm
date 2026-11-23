@@ -232,7 +232,8 @@ Each phase ends with all checks in CLAUDE.md green and a short summary, then sto
   financials charts, documents, interactions, tasks. `financial_math.py` with full test coverage.
 - **Phase 3 — Agent infrastructure.** Checkpointer in the lifespan, LLM provider interface with mock,
   `AgentRun` tracing, approval endpoints with four-eyes rules, SSE, approvals screen and inspection
-  drawer.
+  drawer, audit trail screen. A small development-only demo agent (propose one follow-up task)
+  exercises the full loop before the four main graphs exist.
 - **Phase 4 — The four graphs.** One graph per session, each with tests for the happy path, interrupt,
   approve / edit-and-approve / reject, idempotent proposals, and trace persistence.
 - **Phase 5 — Polish.** Playwright flows (scan → approve outreach → resolve; deal → draft CAM → edit

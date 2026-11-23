@@ -1,4 +1,5 @@
 import { Link } from 'react-router'
+import { useApprovalCount } from '@/api/agents'
 import { useMyTasks } from '@/api/queries'
 import { TaskList } from '@/components/TaskList'
 import type { User } from '@/api/client'
@@ -19,6 +20,7 @@ function Kpi({ label, value, hint }: { label: string; value: string; hint?: stri
 export function CommandCentrePage({ user }: { user: User }) {
   const accounts = useAccounts('')
   const tasks = useMyTasks()
+  const approvals = useApprovalCount()
   const first = user.full_name.split(' ')[0]
 
   return (
@@ -49,6 +51,15 @@ export function CommandCentrePage({ user }: { user: User }) {
           )
         })()
       )}
+      {(approvals.data?.pending_for_me ?? 0) > 0 && (
+        <Link to="/approvals" className="mt-6 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 hover:bg-amber-100">
+          <span>
+            <span className="font-semibold">{approvals.data!.pending_for_me} agent {approvals.data!.pending_for_me === 1 ? 'proposal needs' : 'proposals need'} your approval.</span>{' '}
+            Nothing happens until you decide.
+          </span>
+          <span className="font-medium underline">Review</span>
+        </Link>
+      )}
       <div className="mt-6 grid gap-4 lg:grid-cols-[3fr_2fr]">
         <Card className="p-5">
           <h2 className="mb-2 text-sm font-semibold">My open tasks</h2>
@@ -63,7 +74,7 @@ export function CommandCentrePage({ user }: { user: User }) {
         <Card className="p-5 text-sm text-slate-600">
           <p className="font-medium text-slate-900">What's next</p>
           <p className="mt-1">
-            The approval queue, early-warning scan and credit-memo agent arrive in Phases 3–4. Until then, explore the{' '}
+            The four agents (briefing, KYB intake, early-warning scan and credit memo) arrive in Phase 4. Until then, try the demo agent on any account, or explore the{' '}
             <Link to="/accounts" className="text-brand-700 underline">accounts</Link> and the{' '}
             <Link to="/deals" className="text-brand-700 underline">pipeline</Link>.
           </p>

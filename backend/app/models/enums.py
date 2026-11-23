@@ -40,6 +40,18 @@ class Product(StrEnum):
 
 ISLAMIC_PRODUCTS = frozenset({Product.MURABAHA, Product.IJARA})
 
+PRODUCT_LABEL: dict[Product, str] = {
+    Product.WORKING_CAPITAL: "working capital",
+    Product.TERM_LOAN: "term loan",
+    Product.TRADE_FINANCE_LC: "trade finance (LC)",
+    Product.LETTER_OF_GUARANTEE: "letter of guarantee",
+    Product.POS_MERCHANT: "POS merchant",
+    Product.FX_LINE: "FX line",
+    Product.CASH_MANAGEMENT: "cash management",
+    Product.MURABAHA: "Murabaha",
+    Product.IJARA: "Ijara",
+}
+
 
 class PeriodType(StrEnum):
     MONTHLY = "MONTHLY"

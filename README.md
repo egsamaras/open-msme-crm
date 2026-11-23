@@ -10,9 +10,10 @@ trouble too late. This project shows how AI agents can take that work on **witho
 alone**: every action an agent proposes waits in an approval queue for a person to edit, approve
 or reject it, and every step is written to a tamper-evident audit trail.
 
-> **Status: Phase 2 of 5 done.** The core CRM works today: account 360° view with facility and
-> financial charts, pipeline board with document checklists, interactions and tasks, on top of the
-> Phase 1 foundation. The agents arrive in Phases 3–4 — see the [roadmap](#roadmap).
+> **Status: Phase 3 of 5 done.** The core CRM and the agent machinery work today: LangGraph runs
+> checkpointed in Postgres, an approvals queue with server-side four-eyes rules, a live trace of
+> every agent step, and the tamper-evident audit trail. A small demo agent exercises it end to end;
+> the four main agents arrive in Phase 4 — see the [roadmap](#roadmap).
 >
 > **Reference implementation, not production banking software.** Synthetic data only. See
 > [non-goals](#non-goals).
@@ -75,6 +76,11 @@ Open http://localhost:5173 and sign in as `rm@demo.local`, `credit@demo.local` o
 `compliance@demo.local` with password `demo1234`. In development, the **View as** menu switches
 persona without signing out.
 
+To see the human-in-the-loop flow: open any account as the RM, press **Run agent** under
+"Suggest a follow-up", watch each step stream in, then approve, edit or reject the proposal under
+**Approvals**. **Inspect what the agent did** shows the records it cited and every step; the
+compliance officer sees the result in the **Audit trail**.
+
 Copy `.env.example` to `.env` to change anything; every setting has a safe development default.
 
 ## Synthetic portfolio
@@ -105,7 +111,7 @@ for AI coding assistants (and humans) contributing to the repo.
 
 - [x] **Phase 1 — Foundation:** schema and migrations, seed, auth and roles, audit chain, app shell.
 - [x] **Phase 2 — Core CRM:** account 360°, pipeline, financial charts, documents, interactions, tasks, tested financial maths.
-- [ ] **Phase 3 — Agent infrastructure:** checkpointer, LLM providers, tracing, approvals with four-eyes, inspection drawer.
+- [x] **Phase 3 — Agent infrastructure:** checkpointer, LLM providers (mock, Anthropic, OpenAI-compatible), tracing, approvals with four-eyes, live run stream, inspection drawer, audit trail page, demo agent.
 - [ ] **Phase 4 — The four agents.**
 - [ ] **Phase 5 — Polish:** Playwright end-to-end flows, screenshots.
 
