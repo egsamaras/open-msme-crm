@@ -1,7 +1,8 @@
-import { CheckCircle2, CircleAlert, CircleDashed, FileText, X } from 'lucide-react'
+import { CheckCircle2, CircleAlert, CircleDashed, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { useDeal, useUpdateDeal, type DealDetail, type DealStage } from '@/api/queries'
+import { CamPanel } from '@/components/CamPanel'
 import { Badge, ErrorState, Loading } from '@/components/ui'
 import { DOC_LABEL, formatDate, formatMoney, PRODUCT_LABEL, STAGE_LABEL } from '@/lib/format'
 
@@ -125,16 +126,7 @@ export function DealDrawer({ dealId, onClose }: { dealId: string; onClose: () =>
               </ul>
             </section>
 
-            <section>
-              <button
-                type="button"
-                disabled
-                title="Arrives in Phase 4"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2 font-medium text-slate-400"
-              >
-                <FileText className="size-4" aria-hidden /> Draft credit memo (Phase 4)
-              </button>
-            </section>
+            <CamPanel deal={deal.data} />
 
             <Link to={`/accounts/${deal.data.company_id}`} className="inline-block text-brand-700 underline" onClick={onClose}>
               Open account

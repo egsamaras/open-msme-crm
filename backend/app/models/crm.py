@@ -165,6 +165,7 @@ class Deal(IdMixin, TimestampMixin, Base):
     probability_pct: Mapped[int]
     expected_close: Mapped[date | None] = mapped_column(Date)
     owner_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    credit_officer_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     draft_cam: Mapped[Json | None]
 
 
@@ -224,6 +225,7 @@ class EarlyWarningSignal(IdMixin, TimestampMixin, Base):
     status: Mapped[EwsStatus] = mapped_column(str_enum(EwsStatus), default=EwsStatus.OPEN)
     metrics: Mapped[Json] = mapped_column(default=dict)
     root_cause_summary: Mapped[str | None] = mapped_column(Text)
+    resolution_note: Mapped[str | None] = mapped_column(Text)
     detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     resolved_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

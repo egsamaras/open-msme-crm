@@ -162,3 +162,68 @@ def snapshot_ratios(s: SnapshotInputs, *, months_in_period: int = 1) -> Snapshot
         debt_to_ebitda=debt_to_ebitda(s.total_debt, annual_ebitda),
         current_ratio=current_ratio(s.current_assets, s.current_liabilities),
     )
+
+
+def monthly_debt_service(amount: Decimal, rate_pct: Decimal, tenor_months: int | None) -> Decimal:
+    """Monthly debt service of a new facility: straight-line principal plus monthly interest.
+
+    `tenor_months=None` means a revolving line serviced interest-only. Deliberately simple and
+    conservative for pro-forma DSCR (interest on the full amount every month). 2 decimal places.
+    """
+    if tenor_months is not None and tenor_months < 1:
+        raise ValueError("tenor_months must be at least 1")
+    interest = amount * rate_pct / HUNDRED / 12
+    principal = amount / tenor_months if tenor_months else ZERO
+    return (principal + interest).quantize(PCT_Q, rounding=ROUND_HALF_UP)
+
+
+def spread_pct(values: Sequence[Decimal]) -> Decimal | None:
+    """(max - min) / max as a percentage: how far a series dips below its peak. None if empty."""
+    if not values:
+        return None
+    peak = max(values)
+    if peak <= ZERO:
+        return None
+    return _pct(peak - min(values), peak)
+
+
+def _band(
+    value: Decimal | None, bands: Sequence[tuple[Decimal, int]], worst: int, *, high_is_good: bool
+) -> int:
+    if value is None:
+        return worst
+    for limit, points in bands:
+        if (value >= limit) if high_is_good else (value <= limit):
+            return points
+    return worst
+
+
+def indicative_risk_grade(
+    dscr_value: Decimal | None,
+    debt_to_ebitda_value: Decimal | None,
+    current_ratio_value: Decimal | None,
+) -> int:
+    """A transparent scorecard grade from 1 (strongest) to 10 (weakest).
+
+    Indicative only: it orders cases for a credit officer and never decides anything. A ratio that
+    can't be computed scores as weak, because missing evidence is not comfort.
+    """
+    points = _band(
+        dscr_value,
+        [(Decimal("2.0"), 0), (Decimal("1.5"), 1), (Decimal("1.25"), 2), (Decimal("1.0"), 3)],
+        4,
+        high_is_good=True,
+    )
+    points += _band(
+        debt_to_ebitda_value,
+        [(Decimal("2"), 0), (Decimal("3"), 1), (Decimal("4"), 2), (Decimal("5"), 3)],
+        4,
+        high_is_good=False,
+    )
+    points += _band(
+        current_ratio_value,
+        [(Decimal("1.5"), 0), (Decimal("1.2"), 1), (Decimal("1.0"), 2)],
+        3,
+        high_is_good=True,
+    )
+    return 1 + (points * 9 + 5) // 11

@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Company, Deal, Document, Facility, FinancialSnapshot
+from app.models import Company, Deal, Document, EarlyWarningSignal, Facility, FinancialSnapshot
 from app.models.enums import PRODUCT_LABEL
 from app.schemas.agents import CitedRecord
 
@@ -49,6 +49,18 @@ async def describe_records(session: AsyncSession, ids: Iterable[uuid.UUID]) -> l
         )
     for deal in await session.scalars(select(Deal).where(Deal.id.in_(wanted))):
         out[deal.id] = CitedRecord(id=deal.id, kind="Deal", label=deal.title, href="/deals")
+
+    for sig, name in await session.execute(
+        select(EarlyWarningSignal, Company.trading_name)
+        .join(Company, Company.id == EarlyWarningSignal.company_id)
+        .where(EarlyWarningSignal.id.in_(wanted))
+    ):
+        out[sig.id] = CitedRecord(
+            id=sig.id,
+            kind="Early-warning signal",
+            label=f"{name} · {sig.trigger.value.replace('_', ' ').capitalize()}",
+            href="/risk",
+        )
 
     for missing in wanted - out.keys():
         out[missing] = CitedRecord(id=missing, kind="Unknown", label=str(missing), href=None)

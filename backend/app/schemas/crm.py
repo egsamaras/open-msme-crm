@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.models.enums import (
+    AgentRunStatus,
     DealStage,
     DocumentType,
     EwsStatus,
@@ -127,6 +128,9 @@ class DocumentOut(OrmModel):
     expiry_date: date | None
     verification_status: VerificationStatus
     created_at: datetime
+    has_text: bool = Field(default=False, description="Text on file, so a KYB check can run")
+    check_run_id: uuid.UUID | None = Field(default=None, description="Latest KYB check run")
+    check_run_status: AgentRunStatus | None = None
 
 
 class InteractionOut(OrmModel):
@@ -152,8 +156,20 @@ class EwsOut(OrmModel):
     status: EwsStatus
     metrics: dict[str, object]
     root_cause_summary: str | None
+    resolution_note: str | None
     detected_at: datetime
     resolved_at: datetime | None
+
+
+class EwsListItem(EwsOut):
+    company_id: uuid.UUID
+    company_name: str
+    resolved_by_name: str | None
+
+
+class EwsUpdate(BaseModel):
+    status: Literal["INVESTIGATING", "RESOLVED"]
+    note: str | None = Field(default=None, max_length=2000)
 
 
 # ---- Tasks ----
@@ -212,10 +228,29 @@ class ChecklistItem(BaseModel):
     expiry_date: date | None
 
 
+class CamSectionOut(BaseModel):
+    key: str
+    title: str
+    body: str
+
+
+class DraftCamOut(BaseModel):
+    """The credit memo as approved by a credit officer (stored on the deal)."""
+
+    sections: list[CamSectionOut]
+    risk_grade: int
+    ratios: dict[str, str | None]
+    assumptions: dict[str, str]
+
+
 class DealDetail(DealOut):
     checklist: list[ChecklistItem]
     checklist_complete: bool
     allowed_stages: list[DealStage]
+    draft_cam: DraftCamOut | None = None
+    credit_officer_name: str | None = None
+    cam_run_id: uuid.UUID | None = Field(default=None, description="Latest credit memo run")
+    cam_run_status: AgentRunStatus | None = None
 
 
 class DealIn(BaseModel):

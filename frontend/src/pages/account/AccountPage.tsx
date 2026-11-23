@@ -2,6 +2,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useAccount, useDocuments, useInteractions } from '@/api/queries'
+import { BriefingButton } from '@/components/BriefingPanel'
 import { Tabs } from '@/components/Tabs'
 import { Badge, ErrorState, Loading } from '@/components/ui'
 import { formatDate, formatMoney, titleCase } from '@/lib/format'
@@ -38,6 +39,7 @@ export function AccountPage() {
           <Badge tone="neutral">{titleCase(a.tier)}</Badge>
           <Badge tone={a.risk_rating >= 7 ? 'bad' : a.risk_rating >= 5 ? 'warn' : 'good'}>Risk {a.risk_rating}/10</Badge>
           <Badge tone={KYB_TONE[a.kyb_status]}>KYB {titleCase(a.kyb_status).toLowerCase()}</Badge>
+          <BriefingButton companyId={a.id} companyName={a.trading_name ?? a.legal_name} />
         </div>
       </div>
       <dl className="mb-6 grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">

@@ -2,6 +2,8 @@ import { Eye, ShieldCheck, Users } from 'lucide-react'
 import { useId, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { useApprovals, useResolveApproval, type Approval } from '@/api/agents'
+import { CamRatios } from '@/components/CamView'
+import { gradeTone, type Cam, type CamSection } from '@/lib/cam'
 import { InspectionDrawer } from '@/components/InspectionDrawer'
 import { RUN_TONE } from '@/lib/agents'
 import { Tabs } from '@/components/Tabs'
@@ -32,6 +34,11 @@ const EDITABLE: Record<string, { key: string; label: string; type: 'text' | 'dat
     { key: 'subject', label: 'Subject', type: 'text' },
     { key: 'body', label: 'Message', type: 'textarea' },
   ],
+  ESCALATE_EWS: [
+    { key: 'summary', label: 'Note to the credit officer', type: 'textarea' },
+    { key: 'rm_task_title', label: 'Call task for the relationship manager', type: 'text' },
+  ],
+  FLAG_KYB: [{ key: 'reason', label: 'Reason for flagging', type: 'textarea' }],
 }
 
 function PayloadEditor({ fields, value, onChange, disabled }: {
@@ -62,6 +69,92 @@ function PayloadEditor({ fields, value, onChange, disabled }: {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+type Owner = { full_name: string; ownership_pct: string }
+
+function Discrepancies({ items }: { items: { kind: string; detail: string }[] }) {
+  return (
+    <div className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-900">
+      <p className="text-xs font-medium uppercase tracking-wide">What the check found (deterministic, locked)</p>
+      <ul className="mt-1 list-disc pl-5">{items.map((d) => <li key={d.detail}>{d.detail}</li>)}</ul>
+    </div>
+  )
+}
+
+/** Proposed ownership register, from the declaration. Percentages are editable. */
+function OwnersEditor({ value, onChange, disabled }: { value: Payload; onChange: (v: Payload) => void; disabled: boolean }) {
+  const base = useId()
+  const owners = value.owners as Owner[]
+  const total = owners.reduce((n, o) => n + Number(o.ownership_pct || 0), 0)
+  return (
+    <table className="w-full text-sm">
+      <caption className="pb-1 text-left text-xs text-slate-500">Register after approval</caption>
+      <tbody className="divide-y divide-slate-100">
+        {owners.map((o, i) => (
+          <tr key={o.full_name}>
+            <th scope="row" className="py-1 text-left font-normal">
+              <label htmlFor={`${base}-${i}`}>{o.full_name}</label>
+            </th>
+            <td className="py-1 text-right">
+              <input
+                id={`${base}-${i}`}
+                disabled={disabled}
+                inputMode="decimal"
+                value={o.ownership_pct}
+                onChange={(e) => onChange({ ...value, owners: owners.map((x, j) => (j === i ? { ...x, ownership_pct: e.target.value } : x)) })}
+                className="w-20 rounded border border-slate-300 px-2 py-0.5 text-right tabular-nums disabled:bg-slate-50"
+              />
+              <span className="ml-1">%</span>
+            </td>
+          </tr>
+        ))}
+        <tr>
+          <th scope="row" className="py-1 text-left text-xs text-slate-500">Total</th>
+          <td className={`py-1 text-right text-xs tabular-nums ${total > 100 ? 'text-rose-700' : 'text-slate-500'}`}>{total.toFixed(2)}%</td>
+        </tr>
+      </tbody>
+    </table>
+  )
+}
+
+/** Credit memo review: prose and grade are editable; computed ratios are locked. */
+function CamEditor({ value, onChange, disabled }: { value: Payload; onChange: (v: Payload) => void; disabled: boolean }) {
+  const base = useId()
+  const cam = value as unknown as Cam
+  const setSection = (i: number, body: string) =>
+    onChange({ ...value, sections: cam.sections.map((s: CamSection, j: number) => (j === i ? { ...s, body } : s)) })
+  return (
+    <div className="space-y-3">
+      <CamRatios cam={cam} />
+      <div className="flex items-center gap-3">
+        <label htmlFor={`${base}-grade`} className="text-xs text-slate-500">Indicative risk grade (1 strongest, 10 weakest)</label>
+        <select
+          id={`${base}-grade`}
+          disabled={disabled}
+          value={cam.risk_grade}
+          onChange={(e) => onChange({ ...value, risk_grade: Number(e.target.value) })}
+          className="rounded-lg border border-slate-300 px-2 py-1 text-sm disabled:bg-slate-50"
+        >
+          {Array.from({ length: 10 }, (_, i) => i + 1).map((g) => <option key={g} value={g}>{g}</option>)}
+        </select>
+        <Badge tone={gradeTone(cam.risk_grade)}>Grade {cam.risk_grade}</Badge>
+      </div>
+      {cam.sections.map((s, i) => (
+        <div key={s.key}>
+          <label htmlFor={`${base}-${s.key}`} className="text-xs font-medium text-slate-600">{s.title}</label>
+          <textarea
+            id={`${base}-${s.key}`}
+            disabled={disabled}
+            rows={4}
+            value={s.body}
+            onChange={(e) => setSection(i, e.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-600"
+          />
+        </div>
+      ))}
     </div>
   )
 }
@@ -108,7 +201,14 @@ function ApprovalCard({ item, onInspect }: { item: Approval; onInspect: () => vo
       )}
 
       <form onSubmit={approve} className="mt-4 space-y-3">
-        {fields.length > 0 ? (
+        {Array.isArray(item.proposed_payload.discrepancies) && (
+          <Discrepancies items={item.proposed_payload.discrepancies as { kind: string; detail: string }[]} />
+        )}
+        {item.action_type === 'SUBMIT_CAM' ? (
+          <CamEditor value={draft} onChange={setDraft} disabled={!editable} />
+        ) : item.action_type === 'UPDATE_KYB_RECORD' ? (
+          <OwnersEditor value={draft} onChange={setDraft} disabled={!editable} />
+        ) : fields.length > 0 ? (
           <PayloadEditor fields={fields} value={draft} onChange={setDraft} disabled={!editable} />
         ) : (
           <pre className="overflow-auto rounded-md bg-slate-50 p-2 text-xs">{JSON.stringify(current, null, 2)}</pre>

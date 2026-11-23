@@ -1,4 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
+import { Link } from 'react-router'
 import {
   Bar,
   BarChart,
@@ -26,6 +27,8 @@ import {
   type InteractionIn,
 } from '@/api/queries'
 import { DemoAgentPanel } from '@/components/DemoAgentPanel'
+import { InspectionDrawer } from '@/components/InspectionDrawer'
+import { CheckButton, KYB_ROLES, UploadForm } from '@/components/KybPanel'
 import { TaskList } from '@/components/TaskList'
 import { useAppInfo, useMe } from '@/auth'
 import { Badge, Card, EmptyState, ErrorState, Loading } from '@/components/ui'
@@ -301,6 +304,8 @@ export function FinancialsTab({ account }: Props) {
 
 export function DocumentsTab({ account }: Props) {
   const docs = useDocuments(account.id)
+  const canCheck = KYB_ROLES.has(useMe().data?.role ?? '')
+  const [inspect, setInspect] = useState<string | null>(null)
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Section title="Beneficial owners" aside={<span className="text-xs text-slate-500">UBO at {account.ubo_threshold_pct}% or more</span>}>
@@ -328,22 +333,36 @@ export function DocumentsTab({ account }: Props) {
               <ul className="divide-y divide-slate-100 text-sm">
                 {docs.data!.map((d) => {
                   const days = d.expiry_date ? daysUntil(d.expiry_date) : null
+                  const waiting = d.check_run_status === 'AWAITING_APPROVAL' || d.check_run_status === 'RUNNING'
                   return (
-                    <li key={d.id} className="flex items-center justify-between gap-2 py-2">
-                      <div>
-                        <div className="font-medium">{DOC_LABEL[d.doc_type]}</div>
-                        <div className="text-xs text-slate-500">
-                          {d.file_name}
-                          {d.expiry_date && ` · expires ${formatDate(d.expiry_date)}`}
+                    <li key={d.id} className="py-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <div className="font-medium">{DOC_LABEL[d.doc_type]}</div>
+                          <div className="text-xs text-slate-500">
+                            {d.file_name}
+                            {d.expiry_date && ` · expires ${formatDate(d.expiry_date)}`}
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          {days !== null && days < 0 && <Badge tone="bad">Expired</Badge>}
+                          {days !== null && days >= 0 && days <= 30 && <Badge tone="warn">{days} days left</Badge>}
+                          <Badge tone={d.verification_status === 'VERIFIED' ? 'good' : d.verification_status === 'REJECTED' ? 'bad' : 'warn'}>
+                            {titleCase(d.verification_status)}
+                          </Badge>
                         </div>
                       </div>
-                      <div className="flex gap-1">
-                        {days !== null && days < 0 && <Badge tone="bad">Expired</Badge>}
-                        {days !== null && days >= 0 && days <= 30 && <Badge tone="warn">{days} days left</Badge>}
-                        <Badge tone={d.verification_status === 'VERIFIED' ? 'good' : d.verification_status === 'REJECTED' ? 'bad' : 'warn'}>
-                          {titleCase(d.verification_status)}
-                        </Badge>
-                      </div>
+                      {waiting ? (
+                        <p className="mt-1 text-xs text-amber-800">
+                          KYB check {d.check_run_status === 'RUNNING' ? 'running' : 'waiting for compliance review'} ·{' '}
+                          <Link to="/approvals" className="underline">Approvals</Link> ·{' '}
+                          <button type="button" onClick={() => setInspect(d.check_run_id ?? null)} className="underline">Inspect</button>
+                        </p>
+                      ) : (
+                        canCheck && d.has_text && d.verification_status === 'PENDING' && (
+                          <div className="mt-1"><CheckButton companyId={account.id} documentId={d.id} /></div>
+                        )
+                      )}
                     </li>
                   )
                 })}
@@ -351,7 +370,9 @@ export function DocumentsTab({ account }: Props) {
             )
           }
         </QueryState>
+        {canCheck && <UploadForm companyId={account.id} />}
       </Section>
+      {inspect && <InspectionDrawer runId={inspect} onClose={() => setInspect(null)} />}
     </div>
   )
 }

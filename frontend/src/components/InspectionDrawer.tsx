@@ -2,6 +2,7 @@ import { AlertTriangle, Bot, CirclePause, CirclePlay, Database, Wrench, X } from
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useAgentRun, type TraceEvent } from '@/api/agents'
+import { CamView, type Cam } from '@/components/CamView'
 import { Badge, ErrorState, Loading } from '@/components/ui'
 import { AGENT_LABEL, RUN_TONE } from '@/lib/agents'
 import { titleCase } from '@/lib/format'
@@ -129,6 +130,24 @@ export function InspectionDrawer({ runId, onClose }: { runId: string; onClose: (
               <Badge tone={RUN_TONE[run.data.status]}>{titleCase(run.data.status)}</Badge>
               <span className="text-xs text-slate-500">Started by {run.data.triggered_by_name ?? 'system'} · thread <code>{run.data.thread_id.split(':')[1]?.slice(0, 8)}</code></span>
             </div>
+            {run.data.agent_name === 'kyb_intake' && Array.isArray(run.data.result?.discrepancies) && (
+              <section>
+                <h3 className="mb-2 font-semibold">KYB check outcome</h3>
+                {(run.data.result.discrepancies as { detail: string }[]).length === 0 ? (
+                  <p className="text-emerald-800">No discrepancies.</p>
+                ) : (
+                  <ul className="list-disc pl-5">
+                    {(run.data.result.discrepancies as { detail: string }[]).map((d) => <li key={d.detail}>{d.detail}</li>)}
+                  </ul>
+                )}
+              </section>
+            )}
+            {run.data.agent_name === 'cam_draft' && run.data.result && (
+              <section>
+                <h3 className="mb-2 font-semibold">Draft memo</h3>
+                <CamView cam={run.data.result as unknown as Cam} />
+              </section>
+            )}
             <section>
               <h3 className="mb-2 font-semibold">Records the model used</h3>
               {run.data.cited_records.length === 0 ? (

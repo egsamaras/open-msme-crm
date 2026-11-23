@@ -74,7 +74,8 @@ QAR); the default is set by `DEFAULT_CURRENCY`.
   `financial_math.py` from these inputs.
 - **Deal** — company, product, stage (`LEAD`, `QUALIFICATION`, `DOC_COLLECTION`,
   `CREDIT_UNDERWRITING`, `APPROVAL`, `DISBURSED`, `LOST`), requested amount, probability %, expected
-  close date, owner RM, draft CAM (JSONB, nullable).
+  close date, owner RM, assigned credit officer, draft CAM (JSONB, nullable; set when a credit
+  officer approves the memo).
 - **Document** — company, optional deal, type (`TRADE_LICENSE`, `CR_CERTIFICATE`,
   `FINANCIAL_STATEMENT`, `BANK_STATEMENT`, `TAX_RETURN`, `UBO_DECLARATION`), file name, expiry date,
   verification status (`PENDING`, `VERIFIED`, `REJECTED`), extracted fields (JSONB).
@@ -85,11 +86,12 @@ QAR); the default is set by `DEFAULT_CURRENCY`.
 - **EarlyWarningSignal** — company, trigger (`CASHFLOW_DROP`, `UTILIZATION_SPIKE`, `DOC_EXPIRY`,
   `BOUNCED_CHEQUES`, `COVENANT_BREACH`), severity (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`), status
   (`OPEN`, `INVESTIGATING`, `RESOLVED`), the metric values that fired it (JSONB), AI root-cause
-  summary, detected at, resolved by/at.
+  summary, resolution note, detected at, resolved by/at.
 - **AgentRun** — `thread_id` (the LangGraph thread), optional `parent_run_id`, agent name,
   triggered by, company/deal, status (`RUNNING`, `AWAITING_APPROVAL`, `COMPLETED`, `FAILED`,
   `REJECTED`), `trace` (JSONB: ordered node events, tool inputs/outputs, cited record ids, latency,
-  token usage), timestamps.
+  token usage), `result` (JSONB: what the graph produced, such as a briefing or a draft memo, saved
+  whenever the run pauses or ends), timestamps.
 - **ApprovalItem** — agent run, `thread_id`, `idempotency_key` (**unique**), action type
   (`SEND_EMAIL`, `CREATE_TASK`, `ESCALATE_EWS`, `SUBMIT_CAM`, `FLAG_KYB`, `UPDATE_KYB_RECORD`),
   proposed payload, edited payload, status (`PENDING`, `APPROVED`, `EDITED_AND_APPROVED`,
@@ -147,41 +149,71 @@ Four LangGraph workflows, checkpointed with `AsyncPostgresSaver` so a paused run
 ### 4.2 The four graphs
 
 **Graph 1 — Pre-meeting briefing and next-best-product** (read-only, no interrupt)
-`POST /api/agents/briefing/{company_id}` (SSE).
+`POST /api/agents/briefing/{company_id}` starts it (any role); progress streams from
+`GET /api/agent-runs/{id}/stream` (SSE), like every agent run.
 `fetch_account_context` → `compute_health_metrics` (deterministic) → `synthesize_briefing`.
-Output: account health, talking points, open document/compliance gaps, and 1–2 product ideas tied to
-specific metrics (e.g. working capital utilisation above 85% for 8 weeks → limit review or term-out;
-regular FX volume → FX forward line; seasonal balance dips → Murabaha working capital).
+Output: account health, talking points, open document/compliance gaps, and up to 2 product ideas.
+Health (`GOOD` / `WATCH` / `CONCERN`) and the product candidates come from rules on computed
+metrics: working capital above 85% for 8+ weeks → limit review or term-out; an LC line and no FX
+line → FX line; average balance swinging 15%+ peak to trough over six months → Murabaha working
+capital; no cash management → cash management. The LLM writes the pitches and may only pitch a
+candidate; anything else is dropped and the drop is traced. (The seed has no FX volume data, so the
+FX rule uses LC usage as its proxy.)
 
 **Graph 2 — KYB and document intake**
-`POST /api/documents/upload` starts it.
-`parse_document` → `extract_fields` (LLM, no write tools) → `validate_fields` → `reconcile_against_db`
-(licence/CR expiry, UBOs at or above the threshold, revenue/EBITDA against the latest snapshot) →
-if discrepancies: `propose_kyb_actions` → `await_kyb_review` → `apply_kyb_actions`; else
-`mark_verified`.
-Mock mode supports `.txt` and `.json` "documents"; PDF text extraction uses `pypdf`.
+`POST /api/documents/upload` (multipart: account, document type, file) stores the document as
+`PENDING` and starts it; `POST /api/documents/{id}/check` re-runs it on a document already on file.
+RMs and compliance may start it.
+`parse_document` → `extract_fields` (LLM, no write tools) → `validate_fields` (ranges, ownership
+total ≤ 100%, duplicates, plausible dates) → `reconcile_against_db` (CR number; licence/CR expiry;
+owners against the register, including UBO-threshold crossings; revenue/EBITDA within 10% of the
+annualised monthly snapshots) → then:
+- no discrepancies → `mark_verified` (the only write without a person: status and extracted fields);
+- ownership differences only → `propose_kyb_update` → `await_kyb_update` → `apply_kyb_update`
+  (`UPDATE_KYB_RECORD`: the register takes the declared percentages);
+- anything else → `propose_kyb_flag` → `await_kyb_flag` → `apply_kyb_flag` (`FLAG_KYB`: account
+  flagged, document rejected, RM task).
+Both approvals are four-eyes (compliance). Uploads accept `.txt`, `.json` and `.pdf` (text via
+`pypdf`), up to 1 MB.
 
 **Graph 3 — Early-warning portfolio scan**
 `POST /api/agents/ews-scan` (button) and a CLI entry point for cron
 (`uv run python -m app.jobs.ews_scan`).
-Parent graph: `scan_portfolio` (deterministic rules) → `create_ews_records` → fan out **one child
-thread per flagged company**. Each child: `analyse_root_cause` → `draft_outreach` →
-`propose_outreach` → `await_outreach` → `apply_outreach` (outbox message or call task). One approval
-per company, resolved independently.
+Parent graph: `scan_portfolio` (deterministic rules) → `create_ews_records` (idempotent: an
+unresolved signal with the same trigger and source records is refreshed, not duplicated) →
+`fan_out`, which creates **one child run per company with new signals**. Children run as their own
+threads after the parent finishes. Each child: `load_signals` → `analyse_root_cause` (writes the
+AI root-cause summary to the signals) → `draft_outreach` → **one approval per company**, chosen by
+severity:
+- any `HIGH` or `CRITICAL` signal → `ESCALATE_EWS` (four-eyes, credit officer): signals move to
+  `INVESTIGATING`, the reviewing officer gets a credit-review task and the RM a call task;
+- otherwise → a simulated email to the primary contact (`SEND_EMAIL`), or a call task
+  (`CREATE_TASK`) if there's no contact email.
 Rules (all thresholds in settings):
-- average bank balance down more than 25% over the last 2 monthly snapshots → `CASHFLOW_DROP`
-- working capital utilisation above 90% on every weekly point for the last 30+ days → `UTILIZATION_SPIKE`
-- any bounced cheques in the latest month → `BOUNCED_CHEQUES`
-- trade licence or CR expiring within 30 days → `DOC_EXPIRY`
-- any facility covenant failing on the latest snapshot → `COVENANT_BREACH`
+- average bank balance down more than 25% across the last two months (latest monthly snapshot
+  against the one two months earlier) → `CASHFLOW_DROP` (`CRITICAL` at 40%+, else `HIGH`)
+- working capital utilisation above 90% on every weekly point for the last 30+ days →
+  `UTILIZATION_SPIKE` (`HIGH` at 60+ days or 97%+, else `MEDIUM`)
+- any bounced cheques in the latest month → `BOUNCED_CHEQUES` (`HIGH` at 3+, else `MEDIUM`)
+- trade licence or CR expiring within 30 days → `DOC_EXPIRY` (`HIGH` within 7 days, else `MEDIUM`)
+- any facility covenant failing on the latest snapshot → `COVENANT_BREACH` (`HIGH`)
+The Risk radar (`GET /api/ews`, `PATCH /api/ews/{id}`) lists signals by severity and lets RMs and
+credit officers mark them investigating or resolved (resolving needs a note).
 
 **Graph 4 — Credit appraisal memo (CAM) drafting**
-`POST /api/agents/cam/{deal_id}`, only for deals in `CREDIT_UNDERWRITING`.
-`gather_deal_and_exposure` → `calculate_ratios` (deterministic, including pro-forma DSCR with the
-new facility) → `fetch_benchmarks` (static industry table in seed data) → `draft_cam_sections`
-(executive summary, business overview, financial analysis, facility structure, risks and mitigants,
-preliminary risk grade — all cited) → `propose_cam_submission` → `await_cam_review` →
-`apply_cam_submission` (moves the deal to `APPROVAL` and assigns a credit officer).
+`POST /api/agents/cam/{deal_id}` (RMs), only for deals in `CREDIT_UNDERWRITING` and only one memo
+in progress per deal.
+`gather_deal_and_exposure` → `calculate_ratios` (deterministic: 3-month average EBITDA, DSCR today
+and pro forma with the new facility's debt service, debt/EBITDA, debt/equity, current ratio, and an
+indicative 1–10 scorecard grade; pricing and tenor come from an illustrative per-product table, with
+revolving lines serviced interest-only and non-funded lines adding no debt service) →
+`fetch_benchmarks` (static, illustrative industry table in `app/services/benchmarks.py`) →
+`draft_cam_sections` (executive summary, business overview, financial analysis, facility structure,
+risks and mitigants, preliminary risk grade — all cited) → `propose_cam_submission` →
+`await_cam_submission` → `apply_cam_submission`. A credit officer who didn't start the run reviews
+it and may edit the prose and grade, never the computed ratios or assumptions. Approving moves the
+deal to `APPROVAL`, stores the memo on the deal, makes the reviewer its credit officer and gives
+them a credit-decision task; if the deal moved while the memo waited, it's left where it is.
 
 ---
 
@@ -234,10 +266,10 @@ Each phase ends with all checks in CLAUDE.md green and a short summary, then sto
   `AgentRun` tracing, approval endpoints with four-eyes rules, SSE, approvals screen and inspection
   drawer, audit trail screen. A small development-only demo agent (propose one follow-up task)
   exercises the full loop before the four main graphs exist.
-- **Phase 4 — The four graphs.** One graph per session, each with tests for the happy path, interrupt,
-  approve / edit-and-approve / reject, idempotent proposals, and trace persistence.
-- **Phase 5 — Polish.** Playwright flows (scan → approve outreach → resolve; deal → draft CAM → edit
-  → submit → credit officer review), error states, README screenshots, GitHub Actions CI.
+- **Phase 4 — The four graphs.** Each with tests for the happy path, interrupt,
+  approve / edit-and-approve / reject, idempotent proposals, and trace persistence. Risk radar page.
+- **Phase 5 — Polish.** Playwright flows (scan → approve outreach → resolve; deal → draft CAM → credit
+  officer edits and approves), error states, README screenshots, GitHub Actions CI.
 
 ---
 

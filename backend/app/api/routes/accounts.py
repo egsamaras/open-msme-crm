@@ -9,6 +9,7 @@ from sqlalchemy import func, or_, select
 from app.api.deps import CurrentUser, SessionDep
 from app.core.config import get_settings
 from app.models import (
+    AgentRun,
     BeneficialOwner,
     Company,
     Contact,
@@ -258,14 +259,46 @@ async def get_facilities(
 @router.get("/{company_id}/documents", response_model=list[DocumentOut])
 async def get_documents(
     company_id: uuid.UUID, session: SessionDep, _: CurrentUser
-) -> list[Document]:
+) -> list[DocumentOut]:
     await company_or_404(session, company_id)
-    rows = await session.scalars(
-        select(Document)
-        .where(Document.company_id == company_id)
-        .order_by(Document.doc_type, Document.created_at.desc())
+    rows = list(
+        await session.scalars(
+            select(Document)
+            .where(Document.company_id == company_id)
+            .order_by(Document.doc_type, Document.created_at.desc())
+        )
     )
-    return list(rows)
+    # Latest KYB check per document (runs carry the document id in their graph input).
+    checks: dict[str, AgentRun] = {}
+    for run in await session.scalars(
+        select(AgentRun)
+        .where(AgentRun.company_id == company_id, AgentRun.agent_name == "kyb_intake")
+        .order_by(AgentRun.created_at)
+    ):
+        doc_id = (run.result or {}).get("document_id") or _started_doc(run)
+        if doc_id:
+            checks[doc_id] = run
+    out = []
+    for d in rows:
+        check = checks.get(str(d.id))
+        out.append(
+            DocumentOut.model_validate(d).model_copy(
+                update={
+                    "has_text": bool(d.content_text),
+                    "check_run_id": check.id if check else None,
+                    "check_run_status": check.status if check else None,
+                }
+            )
+        )
+    return out
+
+
+def _started_doc(run: AgentRun) -> str | None:
+    """A paused run has no result yet; its document id is in the first trace event."""
+    for e in run.trace:
+        if e.get("type") == "tool" and e.get("name") == "parse_document":
+            return str(e["input"]["document_id"])
+    return None
 
 
 @router.get("/{company_id}/interactions", response_model=list[InteractionOut])

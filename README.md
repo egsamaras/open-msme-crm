@@ -10,10 +10,11 @@ trouble too late. This project shows how AI agents can take that work on **witho
 alone**: every action an agent proposes waits in an approval queue for a person to edit, approve
 or reject it, and every step is written to a tamper-evident audit trail.
 
-> **Status: Phase 3 of 5 done.** The core CRM and the agent machinery work today: LangGraph runs
-> checkpointed in Postgres, an approvals queue with server-side four-eyes rules, a live trace of
-> every agent step, and the tamper-evident audit trail. A small demo agent exercises it end to end;
-> the four main agents arrive in Phase 4 — see the [roadmap](#roadmap).
+> **Status: Phase 4 of 5 done.** All four agents work end to end in mock mode: the briefing
+> co-pilot, KYB document intake, the early-warning portfolio scan and credit memo drafting, each
+> with live progress, cited output and (where anything changes) a human approval with server-side
+> four-eyes rules. Phase 5 adds browser end-to-end tests and screenshots — see the
+> [roadmap](#roadmap).
 >
 > **Reference implementation, not production banking software.** Synthetic data only. See
 > [non-goals](#non-goals).
@@ -30,17 +31,25 @@ or reject it, and every step is written to a tamper-evident audit trail.
 | **Untrusted documents stay untrusted** | Text pulled from uploaded files is treated as data; the extraction step has no tools that write. |
 | **Runs without an API key** | Mock mode runs the real graphs, checkpointer and approvals with deterministic LLM output. Swap in Anthropic, or any OpenAI-compatible endpoint (vLLM, Ollama) to keep data in-house. |
 
-## The four agents (Phases 3–4)
+## The four agents
 
-1. **Pre-meeting briefing** — account health, talking points, open gaps and next-best-product ideas
-   tied to specific metrics. Read-only.
-2. **KYB and document intake** — extracts fields from uploaded documents, reconciles owners and
-   financials against the record, and routes discrepancies to compliance.
-3. **Early-warning scan** — deterministic rules (balance drops, sustained utilisation, bounced
-   cheques, expiring licences, covenant breaches), then one drafted outreach per flagged client,
-   each approved separately.
-4. **Credit memo drafting** — ratios and pro-forma DSCR from code, sections drafted with citations,
-   RM edits, then four-eyes submission to a credit officer.
+1. **Pre-meeting briefing** — account health, talking points, open gaps and up to two product
+   ideas. Fixed rules choose the health status and which products to suggest (for example a
+   working-capital line above 85% for eight weeks suggests a limit review or term-out); the model
+   only writes them up, and a pitch for any other product is dropped. Read-only.
+2. **KYB and document intake** — upload a `.txt`, `.json` or `.pdf`; the model extracts fields with
+   no tools that write, then fixed rules validate them and reconcile CR number, expiry, owners and
+   financials against the record. Clean documents are verified; differences go to a compliance
+   officer as a register update or a KYB flag (four-eyes).
+3. **Early-warning scan** — fixed rules (balance drop over two months, working capital above 90%
+   for 30+ days, bounced cheques, licence or CR expiring, covenant breaches) find the signals; each
+   flagged company gets its own agent thread that explains the likely cause and drafts a follow-up.
+   High or critical signals go to a credit officer as an escalation (four-eyes); others become a
+   simulated email or a call task for the RM. Also runs from cron.
+4. **Credit memo drafting** — ratios, pro-forma DSCR with the new facility and an indicative
+   scorecard grade come from code, benchmarks from a static table; the model drafts six cited
+   sections. A credit officer who didn't start the run edits and approves it, which moves the deal
+   to Approval and makes them its credit officer.
 
 ## Stack
 
@@ -76,10 +85,23 @@ Open http://localhost:5173 and sign in as `rm@demo.local`, `credit@demo.local` o
 `compliance@demo.local` with password `demo1234`. In development, the **View as** menu switches
 persona without signing out.
 
-To see the human-in-the-loop flow: open any account as the RM, press **Run agent** under
-"Suggest a follow-up", watch each step stream in, then approve, edit or reject the proposal under
-**Approvals**. **Inspect what the agent did** shows the records it cited and every step; the
-compliance officer sees the result in the **Audit trail**.
+A five-minute tour (use **View as** to switch persona):
+
+1. **Risk radar** as the RM: press **Run portfolio scan**. Four planted anomalies fire; each
+   company's review streams in and waits in **Approvals**. Approve or edit the simulated emails.
+2. As the **credit officer**, approve the escalations for Dunes Freight and Oasis Clinics. The
+   alerts move to "investigating" and both of you get tasks.
+3. **Pipeline** as the RM: open Gulf Spice (credit underwriting) and press **Draft credit memo**.
+   As the credit officer, edit a section in **Approvals** and approve; the deal moves to Approval.
+4. **Accounts → Gulf Spice → Owners & documents** as the RM: **Run KYB check** on the pending UBO
+   declaration. As compliance, review the ownership changes and approve.
+5. Any account: **Prepare briefing**. Then open **Audit trail** as compliance and re-check the
+   hash chain.
+
+**Inspect what the agent did** on any run shows each step, every tool input and output, and the
+records the model cited.
+
+The scan also runs from cron: `uv run python -m app.jobs.ews_scan` (from `backend/`).
 
 Copy `.env.example` to `.env` to change anything; every setting has a safe development default.
 
@@ -112,7 +134,7 @@ for AI coding assistants (and humans) contributing to the repo.
 - [x] **Phase 1 — Foundation:** schema and migrations, seed, auth and roles, audit chain, app shell.
 - [x] **Phase 2 — Core CRM:** account 360°, pipeline, financial charts, documents, interactions, tasks, tested financial maths.
 - [x] **Phase 3 — Agent infrastructure:** checkpointer, LLM providers (mock, Anthropic, OpenAI-compatible), tracing, approvals with four-eyes, live run stream, inspection drawer, audit trail page, demo agent.
-- [ ] **Phase 4 — The four agents.**
+- [x] **Phase 4 — The four agents:** briefing co-pilot, KYB intake, early-warning scan with one thread per flagged company, credit memo with four-eyes submission; Risk radar page.
 - [ ] **Phase 5 — Polish:** Playwright end-to-end flows, screenshots.
 
 ## Non-goals

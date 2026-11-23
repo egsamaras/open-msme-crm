@@ -33,6 +33,8 @@ export function useResolveApproval(id: string) {
       void qc.invalidateQueries({ queryKey: ['approvals'] })
       void qc.invalidateQueries({ queryKey: ['tasks'] })
       void qc.invalidateQueries({ queryKey: ['agent-runs'] })
+      // Approved actions change alerts, deals, owners and documents.
+      for (const key of ['ews', 'deals', 'accounts']) void qc.invalidateQueries({ queryKey: [key] })
     },
   })
 }
@@ -42,6 +44,13 @@ export function useAgentRun(id: string | null) {
     queryKey: ['agent-runs', id],
     queryFn: async () => unwrap(await api.GET('/api/agent-runs/{run_id}', { params: { path: { run_id: id! } } })),
     enabled: id !== null,
+  })
+}
+
+export function useStartBriefing(companyId: string) {
+  return useMutation({
+    mutationFn: async () =>
+      unwrap(await api.POST('/api/agents/briefing/{company_id}', { params: { path: { company_id: companyId } } })),
   })
 }
 
