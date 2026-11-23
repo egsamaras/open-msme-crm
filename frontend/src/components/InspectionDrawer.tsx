@@ -130,6 +130,18 @@ export function InspectionDrawer({ runId, onClose }: { runId: string; onClose: (
               <Badge tone={RUN_TONE[run.data.status]}>{titleCase(run.data.status)}</Badge>
               <span className="text-xs text-slate-500">Started by {run.data.triggered_by_name ?? 'system'} · thread <code>{run.data.thread_id.split(':')[1]?.slice(0, 8)}</code></span>
             </div>
+            {run.data.agent_name === 'kyb_intake' && Array.isArray(run.data.result?.discrepancies) && (
+              <section>
+                <h3 className="mb-2 font-semibold">KYB check outcome</h3>
+                {(run.data.result.discrepancies as { detail: string }[]).length === 0 ? (
+                  <p className="text-emerald-800">No discrepancies.</p>
+                ) : (
+                  <ul className="list-disc pl-5">
+                    {(run.data.result.discrepancies as { detail: string }[]).map((d) => <li key={d.detail}>{d.detail}</li>)}
+                  </ul>
+                )}
+              </section>
+            )}
             {run.data.agent_name === 'cam_draft' && run.data.result && (
               <section>
                 <h3 className="mb-2 font-semibold">Draft memo</h3>

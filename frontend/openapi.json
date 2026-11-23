@@ -849,6 +849,31 @@
         "title": "AuditEventOut",
         "type": "object"
       },
+      "Body_upload_document": {
+        "properties": {
+          "company_id": {
+            "format": "uuid",
+            "title": "Company Id",
+            "type": "string"
+          },
+          "doc_type": {
+            "$ref": "#/components/schemas/DocumentType"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": ".txt, .json or .pdf, up to 1 MB",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_id",
+          "doc_type",
+          "file"
+        ],
+        "title": "Body_upload_document",
+        "type": "object"
+      },
       "CamSectionOut": {
         "properties": {
           "body": {
@@ -1430,6 +1455,29 @@
       },
       "DocumentOut": {
         "properties": {
+          "check_run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Latest KYB check run",
+            "title": "Check Run Id"
+          },
+          "check_run_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentRunStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1465,6 +1513,12 @@
           "file_name": {
             "title": "File Name",
             "type": "string"
+          },
+          "has_text": {
+            "default": false,
+            "description": "Text on file, so a KYB check can run",
+            "title": "Has Text",
+            "type": "boolean"
           },
           "id": {
             "format": "uuid",
@@ -4077,6 +4131,92 @@
         "summary": "Start Demo Followup",
         "tags": [
           "agents"
+        ]
+      }
+    },
+    "/api/documents/upload": {
+      "post": {
+        "description": "Store a document (pending) and start its KYB check. Its text is treated as untrusted.",
+        "operationId": "upload_document",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_document"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/documents/{document_id}/check": {
+      "post": {
+        "description": "Run the KYB check on a document already on file.",
+        "operationId": "check_document",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check Document",
+        "tags": [
+          "documents"
         ]
       }
     },

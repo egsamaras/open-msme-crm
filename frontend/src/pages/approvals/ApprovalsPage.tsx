@@ -73,6 +73,53 @@ function PayloadEditor({ fields, value, onChange, disabled }: {
   )
 }
 
+type Owner = { full_name: string; ownership_pct: string }
+
+function Discrepancies({ items }: { items: { kind: string; detail: string }[] }) {
+  return (
+    <div className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-900">
+      <p className="text-xs font-medium uppercase tracking-wide">What the check found (deterministic, locked)</p>
+      <ul className="mt-1 list-disc pl-5">{items.map((d) => <li key={d.detail}>{d.detail}</li>)}</ul>
+    </div>
+  )
+}
+
+/** Proposed ownership register, from the declaration. Percentages are editable. */
+function OwnersEditor({ value, onChange, disabled }: { value: Payload; onChange: (v: Payload) => void; disabled: boolean }) {
+  const base = useId()
+  const owners = value.owners as Owner[]
+  const total = owners.reduce((n, o) => n + Number(o.ownership_pct || 0), 0)
+  return (
+    <table className="w-full text-sm">
+      <caption className="pb-1 text-left text-xs text-slate-500">Register after approval</caption>
+      <tbody className="divide-y divide-slate-100">
+        {owners.map((o, i) => (
+          <tr key={o.full_name}>
+            <th scope="row" className="py-1 text-left font-normal">
+              <label htmlFor={`${base}-${i}`}>{o.full_name}</label>
+            </th>
+            <td className="py-1 text-right">
+              <input
+                id={`${base}-${i}`}
+                disabled={disabled}
+                inputMode="decimal"
+                value={o.ownership_pct}
+                onChange={(e) => onChange({ ...value, owners: owners.map((x, j) => (j === i ? { ...x, ownership_pct: e.target.value } : x)) })}
+                className="w-20 rounded border border-slate-300 px-2 py-0.5 text-right tabular-nums disabled:bg-slate-50"
+              />
+              <span className="ml-1">%</span>
+            </td>
+          </tr>
+        ))}
+        <tr>
+          <th scope="row" className="py-1 text-left text-xs text-slate-500">Total</th>
+          <td className={`py-1 text-right text-xs tabular-nums ${total > 100 ? 'text-rose-700' : 'text-slate-500'}`}>{total.toFixed(2)}%</td>
+        </tr>
+      </tbody>
+    </table>
+  )
+}
+
 /** Credit memo review: prose and grade are editable; computed ratios are locked. */
 function CamEditor({ value, onChange, disabled }: { value: Payload; onChange: (v: Payload) => void; disabled: boolean }) {
   const base = useId()
@@ -154,8 +201,13 @@ function ApprovalCard({ item, onInspect }: { item: Approval; onInspect: () => vo
       )}
 
       <form onSubmit={approve} className="mt-4 space-y-3">
+        {Array.isArray(item.proposed_payload.discrepancies) && (
+          <Discrepancies items={item.proposed_payload.discrepancies as { kind: string; detail: string }[]} />
+        )}
         {item.action_type === 'SUBMIT_CAM' ? (
           <CamEditor value={draft} onChange={setDraft} disabled={!editable} />
+        ) : item.action_type === 'UPDATE_KYB_RECORD' ? (
+          <OwnersEditor value={draft} onChange={setDraft} disabled={!editable} />
         ) : fields.length > 0 ? (
           <PayloadEditor fields={fields} value={draft} onChange={setDraft} disabled={!editable} />
         ) : (

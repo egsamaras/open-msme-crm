@@ -128,6 +128,9 @@ class DocumentOut(OrmModel):
     expiry_date: date | None
     verification_status: VerificationStatus
     created_at: datetime
+    has_text: bool = Field(default=False, description="Text on file, so a KYB check can run")
+    check_run_id: uuid.UUID | None = Field(default=None, description="Latest KYB check run")
+    check_run_status: AgentRunStatus | None = None
 
 
 class InteractionOut(OrmModel):

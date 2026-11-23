@@ -541,6 +541,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documents/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Document
+         * @description Store a document (pending) and start its KYB check. Its text is treated as untrusted.
+         */
+        post: operations["upload_document"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{document_id}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Document
+         * @description Run the KYB check on a document already on file.
+         */
+        post: operations["check_document"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ews": {
         parameters: {
             query?: never;
@@ -914,6 +954,20 @@ export interface components {
             /** Seq */
             seq: number;
         };
+        /** Body_upload_document */
+        Body_upload_document: {
+            /**
+             * Company Id
+             * Format: uuid
+             */
+            company_id: string;
+            doc_type: components["schemas"]["DocumentType"];
+            /**
+             * File
+             * @description .txt, .json or .pdf, up to 1 MB
+             */
+            file: string;
+        };
         /** CamSectionOut */
         CamSectionOut: {
             /** Body */
@@ -1093,6 +1147,12 @@ export interface components {
         /** DocumentOut */
         DocumentOut: {
             /**
+             * Check Run Id
+             * @description Latest KYB check run
+             */
+            check_run_id?: string | null;
+            check_run_status?: components["schemas"]["AgentRunStatus"] | null;
+            /**
              * Created At
              * Format: date-time
              */
@@ -1104,6 +1164,12 @@ export interface components {
             expiry_date: string | null;
             /** File Name */
             file_name: string;
+            /**
+             * Has Text
+             * @description Text on file, so a KYB check can run
+             * @default false
+             */
+            has_text: boolean;
             /**
              * Id
              * Format: uuid
@@ -2476,6 +2542,70 @@ export interface operations {
             header?: never;
             path: {
                 company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_document"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_document: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
             };
             cookie?: never;
         };
