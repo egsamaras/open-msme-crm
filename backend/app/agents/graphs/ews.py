@@ -14,6 +14,7 @@ Child graph `ews_review`, one per flagged company:
 """
 
 import uuid
+from decimal import Decimal
 from typing import Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -474,7 +475,8 @@ def _sig_line(sig: dict[str, Any], currency: str) -> str:
             return (
                 f"average bank balance fell {m['change_pct'].lstrip('-')}% between "
                 f"{m['from_period']} and {m['to_period']} "
-                f"({currency} {m['from_balance']} to {m['to_balance']})"
+                f"({currency} {Decimal(m['from_balance']):,.2f} to "
+                f"{Decimal(m['to_balance']):,.2f})"
             )
         case "UTILIZATION_SPIKE":
             return (

@@ -52,3 +52,43 @@ jobs:
       - run: npm run lint
       - run: npm run test
       - run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: crm
+          POSTGRES_PASSWORD: crm
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U crm" --health-interval 3s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked
+        working-directory: backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      # Playwright resets crm_e2e, starts the API (mock LLM) and Vite, then drives the browser.
+      - run: npm run e2e
+        working-directory: frontend
+        env:
+          E2E_DATABASE_URL: postgresql+asyncpg://crm:crm@localhost:5432/crm_e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          retention-days: 7
