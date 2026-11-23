@@ -2,6 +2,8 @@ import { Eye, ShieldCheck, Users } from 'lucide-react'
 import { useId, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { useApprovals, useResolveApproval, type Approval } from '@/api/agents'
+import { CamRatios } from '@/components/CamView'
+import { gradeTone, type Cam, type CamSection } from '@/lib/cam'
 import { InspectionDrawer } from '@/components/InspectionDrawer'
 import { RUN_TONE } from '@/lib/agents'
 import { Tabs } from '@/components/Tabs'
@@ -71,6 +73,45 @@ function PayloadEditor({ fields, value, onChange, disabled }: {
   )
 }
 
+/** Credit memo review: prose and grade are editable; computed ratios are locked. */
+function CamEditor({ value, onChange, disabled }: { value: Payload; onChange: (v: Payload) => void; disabled: boolean }) {
+  const base = useId()
+  const cam = value as unknown as Cam
+  const setSection = (i: number, body: string) =>
+    onChange({ ...value, sections: cam.sections.map((s: CamSection, j: number) => (j === i ? { ...s, body } : s)) })
+  return (
+    <div className="space-y-3">
+      <CamRatios cam={cam} />
+      <div className="flex items-center gap-3">
+        <label htmlFor={`${base}-grade`} className="text-xs text-slate-500">Indicative risk grade (1 strongest, 10 weakest)</label>
+        <select
+          id={`${base}-grade`}
+          disabled={disabled}
+          value={cam.risk_grade}
+          onChange={(e) => onChange({ ...value, risk_grade: Number(e.target.value) })}
+          className="rounded-lg border border-slate-300 px-2 py-1 text-sm disabled:bg-slate-50"
+        >
+          {Array.from({ length: 10 }, (_, i) => i + 1).map((g) => <option key={g} value={g}>{g}</option>)}
+        </select>
+        <Badge tone={gradeTone(cam.risk_grade)}>Grade {cam.risk_grade}</Badge>
+      </div>
+      {cam.sections.map((s, i) => (
+        <div key={s.key}>
+          <label htmlFor={`${base}-${s.key}`} className="text-xs font-medium text-slate-600">{s.title}</label>
+          <textarea
+            id={`${base}-${s.key}`}
+            disabled={disabled}
+            rows={4}
+            value={s.body}
+            onChange={(e) => setSection(i, e.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm disabled:bg-slate-50 disabled:text-slate-600"
+          />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function ApprovalCard({ item, onInspect }: { item: Approval; onInspect: () => void }) {
   const resolve = useResolveApproval(item.id)
   const current = (item.edited_payload ?? item.proposed_payload) as Payload
@@ -113,7 +154,9 @@ function ApprovalCard({ item, onInspect }: { item: Approval; onInspect: () => vo
       )}
 
       <form onSubmit={approve} className="mt-4 space-y-3">
-        {fields.length > 0 ? (
+        {item.action_type === 'SUBMIT_CAM' ? (
+          <CamEditor value={draft} onChange={setDraft} disabled={!editable} />
+        ) : fields.length > 0 ? (
           <PayloadEditor fields={fields} value={draft} onChange={setDraft} disabled={!editable} />
         ) : (
           <pre className="overflow-auto rounded-md bg-slate-50 p-2 text-xs">{JSON.stringify(current, null, 2)}</pre>

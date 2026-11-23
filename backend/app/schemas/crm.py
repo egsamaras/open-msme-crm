@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.models.enums import (
+    AgentRunStatus,
     DealStage,
     DocumentType,
     EwsStatus,
@@ -224,10 +225,29 @@ class ChecklistItem(BaseModel):
     expiry_date: date | None
 
 
+class CamSectionOut(BaseModel):
+    key: str
+    title: str
+    body: str
+
+
+class DraftCamOut(BaseModel):
+    """The credit memo as approved by a credit officer (stored on the deal)."""
+
+    sections: list[CamSectionOut]
+    risk_grade: int
+    ratios: dict[str, str | None]
+    assumptions: dict[str, str]
+
+
 class DealDetail(DealOut):
     checklist: list[ChecklistItem]
     checklist_complete: bool
     allowed_stages: list[DealStage]
+    draft_cam: DraftCamOut | None = None
+    credit_officer_name: str | None = None
+    cam_run_id: uuid.UUID | None = Field(default=None, description="Latest credit memo run")
+    cam_run_status: AgentRunStatus | None = None
 
 
 class DealIn(BaseModel):

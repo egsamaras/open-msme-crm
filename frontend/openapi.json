@@ -849,6 +849,29 @@
         "title": "AuditEventOut",
         "type": "object"
       },
+      "CamSectionOut": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "body"
+        ],
+        "title": "CamSectionOut",
+        "type": "object"
+      },
       "ChecklistItem": {
         "properties": {
           "doc_type": {
@@ -1064,6 +1087,29 @@
             "title": "Allowed Stages",
             "type": "array"
           },
+          "cam_run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Latest credit memo run",
+            "title": "Cam Run Id"
+          },
+          "cam_run_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentRunStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "checklist": {
             "items": {
               "$ref": "#/components/schemas/ChecklistItem"
@@ -1084,9 +1130,30 @@
             "title": "Company Name",
             "type": "string"
           },
+          "credit_officer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credit Officer Name"
+          },
           "currency": {
             "title": "Currency",
             "type": "string"
+          },
+          "draft_cam": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DraftCamOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "expected_close": {
             "anyOf": [
@@ -1431,6 +1498,51 @@
         ],
         "title": "DocumentType",
         "type": "string"
+      },
+      "DraftCamOut": {
+        "description": "The credit memo as approved by a credit officer (stored on the deal).",
+        "properties": {
+          "assumptions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Assumptions",
+            "type": "object"
+          },
+          "ratios": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Ratios",
+            "type": "object"
+          },
+          "risk_grade": {
+            "title": "Risk Grade",
+            "type": "integer"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/CamSectionOut"
+            },
+            "title": "Sections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sections",
+          "risk_grade",
+          "ratios",
+          "assumptions"
+        ],
+        "title": "DraftCamOut",
+        "type": "object"
       },
       "EwsListItem": {
         "properties": {
@@ -3135,6 +3247,50 @@
           }
         },
         "summary": "Stream Run",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
+    "/api/agents/cam/{deal_id}": {
+      "post": {
+        "description": "Draft a credit memo for a deal in underwriting. A credit officer reviews it (four-eyes).",
+        "operationId": "start_cam",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "deal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Deal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Cam",
         "tags": [
           "agents"
         ]

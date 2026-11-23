@@ -151,6 +151,8 @@ def test_monthly_debt_service_straight_line() -> None:
     # 120,000 over 12 months at 6%: 10,000 principal + 600 interest.
     assert fm.monthly_debt_service(D("120000"), D("6"), 12) == D("10600.00")
     assert fm.monthly_debt_service(D("100000"), D("0"), 3) == D("33333.33")
+    # Revolving line: interest only.
+    assert fm.monthly_debt_service(D("120000"), D("6"), None) == D("600.00")
 
 
 def test_monthly_debt_service_rejects_zero_tenor() -> None:

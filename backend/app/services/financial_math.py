@@ -164,16 +164,17 @@ def snapshot_ratios(s: SnapshotInputs, *, months_in_period: int = 1) -> Snapshot
     )
 
 
-def monthly_debt_service(amount: Decimal, rate_pct: Decimal, tenor_months: int) -> Decimal:
-    """Monthly debt service of a new facility, straight-line: principal / tenor + monthly interest.
+def monthly_debt_service(amount: Decimal, rate_pct: Decimal, tenor_months: int | None) -> Decimal:
+    """Monthly debt service of a new facility: straight-line principal plus monthly interest.
 
-    A deliberately simple, conservative estimate for pro-forma DSCR (interest on the full amount
-    for every month). Rounded to 2 decimal places.
+    `tenor_months=None` means a revolving line serviced interest-only. Deliberately simple and
+    conservative for pro-forma DSCR (interest on the full amount every month). 2 decimal places.
     """
-    if tenor_months < 1:
+    if tenor_months is not None and tenor_months < 1:
         raise ValueError("tenor_months must be at least 1")
     interest = amount * rate_pct / HUNDRED / 12
-    return (amount / tenor_months + interest).quantize(PCT_Q, rounding=ROUND_HALF_UP)
+    principal = amount / tenor_months if tenor_months else ZERO
+    return (principal + interest).quantize(PCT_Q, rounding=ROUND_HALF_UP)
 
 
 def spread_pct(values: Sequence[Decimal]) -> Decimal | None:

@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep, require_roles
-from app.models import Company, Deal, Document, User
+from app.models import AgentRun, Company, Deal, Document, User
 from app.models.enums import DealStage, Role
-from app.schemas.crm import DealDetail, DealIn, DealOut, DealPatch
+from app.schemas.crm import DealDetail, DealIn, DealOut, DealPatch, DraftCamOut
 from app.services import audit
 from app.services.pipeline import allowed_stages, build_checklist, checklist_complete
 
@@ -80,11 +80,22 @@ async def _detail(session: SessionDep, deal_id: uuid.UUID, role: Role) -> DealDe
     deal, company, owner_name = row
     docs = await session.scalars(select(Document).where(Document.company_id == company.id))
     checklist = build_checklist(docs, datetime.now(UTC).date())
+    cam_run = await session.scalar(
+        select(AgentRun)
+        .where(AgentRun.deal_id == deal.id, AgentRun.agent_name == "cam_draft")
+        .order_by(AgentRun.created_at.desc())
+        .limit(1)
+    )
+    officer = await session.get(User, deal.credit_officer_id) if deal.credit_officer_id else None
     return DealDetail(
         **_deal_out(deal, company, owner_name).model_dump(),
         checklist=checklist,
         checklist_complete=checklist_complete(checklist),
         allowed_stages=allowed_stages(deal.stage, role),
+        draft_cam=DraftCamOut.model_validate(deal.draft_cam) if deal.draft_cam else None,
+        credit_officer_name=officer.full_name if officer else None,
+        cam_run_id=cam_run.id if cam_run else None,
+        cam_run_status=cam_run.status if cam_run else None,
     )
 
 

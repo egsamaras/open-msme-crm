@@ -7,7 +7,7 @@ from fastapi.routing import APIRoute
 
 from app.agents import graphs  # noqa: F401  (importing registers the agent graphs)
 from app.agents.checkpointer import close_checkpointer, open_checkpointer
-from app.api.routes import accounts, agents, auth, deals, ews, system, tasks
+from app.api.routes import accounts, agents, auth, copilot, deals, ews, system, tasks
 from app.core.config import get_settings
 from app.db.session import dispose_engine
 
@@ -42,7 +42,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    for module in (system, auth, accounts, deals, tasks, agents, ews):
+    for module in (system, auth, accounts, deals, tasks, agents, copilot, ews):
         app.include_router(module.router)
     return app
 

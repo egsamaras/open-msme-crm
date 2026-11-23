@@ -195,6 +195,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/agents/cam/{deal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Cam
+         * @description Draft a credit memo for a deal in underwriting. A credit officer reviews it (four-eyes).
+         */
+        post: operations["start_cam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/agents/ews-scan": {
         parameters: {
             query?: never;
@@ -874,6 +894,15 @@ export interface components {
             /** Seq */
             seq: number;
         };
+        /** CamSectionOut */
+        CamSectionOut: {
+            /** Body */
+            body: string;
+            /** Key */
+            key: string;
+            /** Title */
+            title: string;
+        };
         /** ChecklistItem */
         ChecklistItem: {
             doc_type: components["schemas"]["DocumentType"];
@@ -938,6 +967,12 @@ export interface components {
         DealDetail: {
             /** Allowed Stages */
             allowed_stages: components["schemas"]["DealStage"][];
+            /**
+             * Cam Run Id
+             * @description Latest credit memo run
+             */
+            cam_run_id?: string | null;
+            cam_run_status?: components["schemas"]["AgentRunStatus"] | null;
             /** Checklist */
             checklist: components["schemas"]["ChecklistItem"][];
             /** Checklist Complete */
@@ -949,8 +984,11 @@ export interface components {
             company_id: string;
             /** Company Name */
             company_name: string;
+            /** Credit Officer Name */
+            credit_officer_name?: string | null;
             /** Currency */
             currency: string;
+            draft_cam?: components["schemas"]["DraftCamOut"] | null;
             /** Expected Close */
             expected_close: string | null;
             /** Has Draft Cam */
@@ -1058,6 +1096,24 @@ export interface components {
          * @enum {string}
          */
         DocumentType: "TRADE_LICENSE" | "CR_CERTIFICATE" | "FINANCIAL_STATEMENT" | "BANK_STATEMENT" | "TAX_RETURN" | "UBO_DECLARATION";
+        /**
+         * DraftCamOut
+         * @description The credit memo as approved by a credit officer (stored on the deal).
+         */
+        DraftCamOut: {
+            /** Assumptions */
+            assumptions: {
+                [key: string]: string;
+            };
+            /** Ratios */
+            ratios: {
+                [key: string]: string | null;
+            };
+            /** Risk Grade */
+            risk_grade: number;
+            /** Sections */
+            sections: components["schemas"]["CamSectionOut"][];
+        };
         /** EwsListItem */
         EwsListItem: {
             /**
@@ -1831,6 +1887,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_cam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunSummary"];
                 };
             };
             /** @description Validation Error */
