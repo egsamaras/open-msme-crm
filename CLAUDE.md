@@ -19,6 +19,7 @@ uv sync
 uv run alembic upgrade head
 uv run python -m app.db.seed                # idempotent
 uv run python -m app.jobs.ews_scan          # early-warning scan, as cron would run it
+uv run python -m app.db.reset --yes         # wipe, migrate and seed DATABASE_URL (never production)
 uv run uvicorn app.main:app --reload --port 8000
 uv run ruff check . && uv run ruff format --check . && uv run mypy app && uv run pytest
 uv run pytest --cov=app.services.financial_math --cov-fail-under=100   # CI gate: maths stays at 100%
@@ -31,7 +32,14 @@ npm install
 npm run dev                                 # http://localhost:5173, proxies /api to :8000
 npm run generate:api                        # exports OpenAPI from the backend code; no server needed
 npm run typecheck && npm run lint && npm run test   # lint = oxlint
+npm run e2e                                 # Playwright, own crm_e2e DB and ports 8100/5180
+npm run screenshots                         # regenerate docs/screenshots from a fresh DB
 ```
+
+E2E specs live in `frontend/e2e/`, run one at a time in file order on a shared, freshly reset
+database. Find elements by role and accessible name (approval cards are `article`s named
+"<action>: <account>"), not by CSS classes; a UI change that breaks a role or name is a real
+accessibility regression too.
 
 ## Rules that are easy to get wrong
 

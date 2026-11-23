@@ -7,7 +7,7 @@ import { ErrorState, Loading } from '@/components/ui'
 import { AccountsPage } from '@/pages/AccountsPage'
 import { CommandCentrePage } from '@/pages/CommandCentrePage'
 import { LoginPage } from '@/pages/LoginPage'
-import { PlaceholderPage } from '@/pages/PlaceholderPage'
+import { NotFoundPage, RouteError } from '@/pages/ErrorPages'
 
 // Chart-heavy pages load on demand to keep the first load small.
 const AccountPage = lazy(() => import('@/pages/account/AccountPage').then((m) => ({ default: m.AccountPage })))
@@ -25,14 +25,20 @@ function buildRouter(user: User) {
     {
       element: <Layout user={user} />,
       children: [
-        { index: true, element: <CommandCentrePage user={user} /> },
-        { path: 'accounts', element: <AccountsPage /> },
-        { path: 'accounts/:id', element: <Lazy><AccountPage /></Lazy> },
-        { path: 'deals', element: <Lazy><PipelinePage /></Lazy> },
-        { path: 'risk', element: <Lazy><RiskPage /></Lazy> },
-        { path: 'approvals', element: <Lazy><ApprovalsPage /></Lazy> },
-        { path: 'audit', element: <Lazy><AuditPage /></Lazy> },
-        { path: '*', element: <PlaceholderPage title="Not found" phase={0}>This page doesn't exist.</PlaceholderPage> },
+        {
+          // Errors render inside the layout, so navigation stays usable.
+          errorElement: <RouteError />,
+          children: [
+            { index: true, element: <CommandCentrePage user={user} /> },
+            { path: 'accounts', element: <AccountsPage /> },
+            { path: 'accounts/:id', element: <Lazy><AccountPage /></Lazy> },
+            { path: 'deals', element: <Lazy><PipelinePage /></Lazy> },
+            { path: 'risk', element: <Lazy><RiskPage /></Lazy> },
+            { path: 'approvals', element: <Lazy><ApprovalsPage /></Lazy> },
+            { path: 'audit', element: <Lazy><AuditPage /></Lazy> },
+            { path: '*', element: <NotFoundPage /> },
+          ],
+        },
       ],
     },
   ])

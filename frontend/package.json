@@ -10,7 +10,9 @@
     "typecheck": "tsc -b",
     "lint": "oxlint",
     "test": "vitest run",
-    "generate:api": "cd ../backend && uv run python -m app.export_openapi ../frontend/openapi.json && cd ../frontend && openapi-typescript openapi.json -o src/api/schema.d.ts"
+    "generate:api": "cd ../backend && uv run python -m app.export_openapi ../frontend/openapi.json && cd ../frontend && openapi-typescript openapi.json -o src/api/schema.d.ts",
+    "e2e": "playwright test --project=flows",
+    "screenshots": "playwright test --project=screenshots"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.108.2",
@@ -24,6 +26,7 @@
     "tailwind-merge": "^3.7.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/vite": "^4.3.5",
     "@testing-library/jest-dom": "^8.0.0",
     "@testing-library/react": "^16.3.3",

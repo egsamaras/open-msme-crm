@@ -175,11 +175,13 @@ function ApprovalCard({ item, onInspect }: { item: Approval; onInspect: () => vo
     resolve.mutate({ decision: 'APPROVE', payload: edited ? draft : null, note: note || null })
   }
 
+  const heading = ACTION_LABEL[item.action_type] ?? titleCase(item.action_type)
   return (
+    <article aria-label={`${heading}: ${item.company_name ?? 'no account'}`}>
     <Card className="p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-semibold">{ACTION_LABEL[item.action_type] ?? titleCase(item.action_type)}</h2>
+          <h2 className="font-semibold">{heading}</h2>
           <p className="text-sm text-slate-500">
             {item.company_id ? (
               <Link to={`/accounts/${item.company_id}`} className="hover:underline">{item.company_name}</Link>
@@ -270,6 +272,7 @@ function ApprovalCard({ item, onInspect }: { item: Approval; onInspect: () => vo
         </button>
       </div>
     </Card>
+    </article>
   )
 }
 

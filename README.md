@@ -10,14 +10,15 @@ trouble too late. This project shows how AI agents can take that work on **witho
 alone**: every action an agent proposes waits in an approval queue for a person to edit, approve
 or reject it, and every step is written to a tamper-evident audit trail.
 
-> **Status: Phase 4 of 5 done.** All four agents work end to end in mock mode: the briefing
+> **Status: all five phases done.** All four agents work end to end in mock mode: the briefing
 > co-pilot, KYB document intake, the early-warning portfolio scan and credit memo drafting, each
 > with live progress, cited output and (where anything changes) a human approval with server-side
-> four-eyes rules. Phase 5 adds browser end-to-end tests and screenshots — see the
-> [roadmap](#roadmap).
+> four-eyes rules. Browser end-to-end tests drive every flow in CI.
 >
 > **Reference implementation, not production banking software.** Synthetic data only. See
 > [non-goals](#non-goals).
+
+![Risk radar after a portfolio scan: alerts ranked by severity with the exact values that fired them](docs/screenshots/risk-radar.png)
 
 ## What makes it different
 
@@ -51,10 +52,24 @@ or reject it, and every step is written to a tamper-evident audit trail.
    sections. A credit officer who didn't start the run edits and approves it, which moves the deal
    to Approval and makes them its credit officer.
 
+## Screenshots
+
+| | |
+|---|---|
+| ![A credit officer reviews a drafted credit memo beside ratios the system computed](docs/screenshots/credit-memo-review.png) | ![The inspection drawer: every step, tool call and cited record of an agent run](docs/screenshots/inspection-drawer.png) |
+| **Credit memo review.** Ratios are computed in code and locked; the officer edits the prose. | **Inspect any run.** Steps, tool inputs and outputs, model calls and cited records. |
+| ![Compliance reviews an ownership change found by the KYB check](docs/screenshots/kyb-review.png) | ![Meeting briefing co-pilot with talking points, gaps and rule-based product ideas](docs/screenshots/briefing.png) |
+| **KYB four-eyes.** Deterministic findings, an editable register, a second person decides. | **Briefing co-pilot.** Rules pick the products; the model writes the pitch. |
+| ![Command centre with KPIs, approvals waiting and the portfolio scan](docs/screenshots/command-centre.png) | ![Audit trail with hash-chain verification](docs/screenshots/audit-trail.png) |
+| **Command centre.** | **Tamper-evident audit trail.** |
+
+Regenerate them with `npm run screenshots` (from `frontend/`).
+
 ## Stack
 
 FastAPI · SQLAlchemy 2 (async) · Alembic · PostgreSQL 16 · LangGraph with a Postgres checkpointer ·
-React 19 · TypeScript · Vite · Tailwind CSS v4 · TanStack Query · types generated from OpenAPI.
+React 19 · TypeScript · Vite · Tailwind CSS v4 · TanStack Query · types generated from OpenAPI ·
+Playwright.
 
 ## Quick start
 
@@ -105,6 +120,9 @@ The scan also runs from cron: `uv run python -m app.jobs.ews_scan` (from `backen
 
 Copy `.env.example` to `.env` to change anything; every setting has a safe development default.
 
+To start the demo over, `uv run python -m app.db.reset --yes` (from `backend/`) wipes the database,
+migrates and seeds it again. It refuses to run in production.
+
 ## Synthetic portfolio
 
 15 invented companies across Bahrain, Saudi Arabia, the UAE, Kuwait, Oman and Qatar, in local
@@ -121,7 +139,14 @@ uv run ruff check . && uv run ruff format --check . && uv run mypy app && uv run
 # frontend
 npm run typecheck && npm run lint && npm run test
 npm run generate:api        # regenerate TypeScript types after changing an API schema
+npm run e2e                 # Playwright: real backend + frontend on a fresh crm_e2e database
 ```
+
+The end-to-end suite resets its own database, starts the API (mock LLM) on port 8100 and Vite on
+5180, and drives Chromium through each agent's flow: scan → approve outreach and an escalation →
+resolve; draft a credit memo → credit officer edits and submits; KYB check → compliance updates the
+register, plus an upload with hidden instructions; briefing → audit chain; and error states. Run
+`npx playwright install chromium` once first.
 
 Backend tests run against a real Postgres database (`crm_test`, created by Docker Compose): they
 apply the real migrations and seed, and check that the schema matches the models.
@@ -135,7 +160,7 @@ for AI coding assistants (and humans) contributing to the repo.
 - [x] **Phase 2 — Core CRM:** account 360°, pipeline, financial charts, documents, interactions, tasks, tested financial maths.
 - [x] **Phase 3 — Agent infrastructure:** checkpointer, LLM providers (mock, Anthropic, OpenAI-compatible), tracing, approvals with four-eyes, live run stream, inspection drawer, audit trail page, demo agent.
 - [x] **Phase 4 — The four agents:** briefing co-pilot, KYB intake, early-warning scan with one thread per flagged company, credit memo with four-eyes submission; Risk radar page.
-- [ ] **Phase 5 — Polish:** Playwright end-to-end flows, screenshots.
+- [x] **Phase 5 — Polish:** Playwright end-to-end flows in CI, error and not-found pages, database reset command, screenshots.
 
 ## Non-goals
 
