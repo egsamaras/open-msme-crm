@@ -32,6 +32,11 @@ const EDITABLE: Record<string, { key: string; label: string; type: 'text' | 'dat
     { key: 'subject', label: 'Subject', type: 'text' },
     { key: 'body', label: 'Message', type: 'textarea' },
   ],
+  ESCALATE_EWS: [
+    { key: 'summary', label: 'Note to the credit officer', type: 'textarea' },
+    { key: 'rm_task_title', label: 'Call task for the relationship manager', type: 'text' },
+  ],
+  FLAG_KYB: [{ key: 'reason', label: 'Reason for flagging', type: 'textarea' }],
 }
 
 function PayloadEditor({ fields, value, onChange, disabled }: {

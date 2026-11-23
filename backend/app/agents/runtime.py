@@ -69,13 +69,20 @@ async def create_run(
     return run
 
 
-async def _flush(run_id: uuid.UUID, tracer: Tracer, status: AgentRunStatus | None = None) -> None:
+async def _flush(
+    run_id: uuid.UUID,
+    tracer: Tracer,
+    status: AgentRunStatus | None = None,
+    result: dict[str, Any] | None = None,
+) -> None:
     events = tracer.drain()
     async with get_sessionmaker()() as session:
         run = await session.get(AgentRun, run_id)
         assert run is not None
         if events:
             run.trace = [*run.trace, *events]  # reassign so SQLAlchemy sees the change
+        if result is not None:
+            run.result = result
         if status is not None:
             run.status = status
             if status in TERMINAL:
@@ -100,6 +107,7 @@ async def execute(run_id: uuid.UUID, graph_input: dict[str, Any] | Command[Any])
     config = {"configurable": {"thread_id": ctx.thread_id}}
     token = set_context(ctx)
     status = AgentRunStatus.RUNNING
+    result: dict[str, Any] | None = None
     try:
         last = time.perf_counter()
         async for chunk in graph.astream(graph_input, config, stream_mode="updates"):
@@ -113,6 +121,8 @@ async def execute(run_id: uuid.UUID, graph_input: dict[str, Any] | Command[Any])
                 last = now
             await _flush(run_id, ctx.tracer)
         snapshot = await graph.aget_state(config)
+        # A graph may publish what it produced (a briefing, a draft memo) under `result`.
+        result = snapshot.values.get("result")
         if snapshot.next:
             status = AgentRunStatus.AWAITING_APPROVAL
         else:
@@ -126,7 +136,7 @@ async def execute(run_id: uuid.UUID, graph_input: dict[str, Any] | Command[Any])
         status = AgentRunStatus.FAILED
     finally:
         reset_context(token)
-    await _flush(run_id, ctx.tracer, status)
+    await _flush(run_id, ctx.tracer, status, result)
     return status
 
 

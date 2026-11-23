@@ -142,3 +142,37 @@ def test_snapshot_ratios_annual_period() -> None:
 def test_snapshot_ratios_rejects_bad_period() -> None:
     with pytest.raises(ValueError, match="at least 1"):
         fm.snapshot_ratios(Snap(), months_in_period=0)
+
+
+# ---- Phase 4 additions ----
+
+
+def test_monthly_debt_service_straight_line() -> None:
+    # 120,000 over 12 months at 6%: 10,000 principal + 600 interest.
+    assert fm.monthly_debt_service(D("120000"), D("6"), 12) == D("10600.00")
+    assert fm.monthly_debt_service(D("100000"), D("0"), 3) == D("33333.33")
+
+
+def test_monthly_debt_service_rejects_zero_tenor() -> None:
+    with pytest.raises(ValueError):
+        fm.monthly_debt_service(D("1"), D("1"), 0)
+
+
+def test_spread_pct() -> None:
+    assert fm.spread_pct([D("100"), D("80"), D("90")]) == D("20.00")
+    assert fm.spread_pct([]) is None
+    assert fm.spread_pct([D("0"), D("0")]) is None
+
+
+@pytest.mark.parametrize(
+    ("dscr", "lev", "cr", "grade"),
+    [
+        (D("2.5"), D("1.5"), D("2"), 1),  # strongest on every measure
+        (D("1.6"), D("2.5"), D("1.3"), 3),  # 1 + 1 + 1 = 3 points
+        (D("1.1"), D("4.5"), D("1.1"), 8),  # 3 + 3 + 2 = 8 points
+        (D("0.8"), D("6"), D("0.9"), 10),  # weakest on every measure
+        (None, None, None, 10),  # nothing computable scores as weak
+    ],
+)
+def test_indicative_risk_grade(dscr: D | None, lev: D | None, cr: D | None, grade: int) -> None:
+    assert fm.indicative_risk_grade(dscr, lev, cr) == grade

@@ -13,6 +13,7 @@ import { PlaceholderPage } from '@/pages/PlaceholderPage'
 const AccountPage = lazy(() => import('@/pages/account/AccountPage').then((m) => ({ default: m.AccountPage })))
 const ApprovalsPage = lazy(() => import('@/pages/approvals/ApprovalsPage').then((m) => ({ default: m.ApprovalsPage })))
 const AuditPage = lazy(() => import('@/pages/AuditPage').then((m) => ({ default: m.AuditPage })))
+const RiskPage = lazy(() => import('@/pages/risk/RiskPage').then((m) => ({ default: m.RiskPage })))
 const PipelinePage = lazy(() => import('@/pages/pipeline/PipelinePage').then((m) => ({ default: m.PipelinePage })))
 
 function Lazy({ children }: { children: ReactNode }) {
@@ -28,14 +29,7 @@ function buildRouter(user: User) {
         { path: 'accounts', element: <AccountsPage /> },
         { path: 'accounts/:id', element: <Lazy><AccountPage /></Lazy> },
         { path: 'deals', element: <Lazy><PipelinePage /></Lazy> },
-        {
-          path: 'risk',
-          element: (
-            <PlaceholderPage title="Risk radar" phase={4}>
-              Early-warning alerts ranked by severity, with the exact metric values that fired each one.
-            </PlaceholderPage>
-          ),
-        },
+        { path: 'risk', element: <Lazy><RiskPage /></Lazy> },
         { path: 'approvals', element: <Lazy><ApprovalsPage /></Lazy> },
         { path: 'audit', element: <Lazy><AuditPage /></Lazy> },
         { path: '*', element: <PlaceholderPage title="Not found" phase={0}>This page doesn't exist.</PlaceholderPage> },

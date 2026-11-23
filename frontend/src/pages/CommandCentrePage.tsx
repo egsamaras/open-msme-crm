@@ -1,19 +1,26 @@
 import { Link } from 'react-router'
 import { useApprovalCount } from '@/api/agents'
 import { useMyTasks } from '@/api/queries'
+import { ScanPanel } from '@/components/ScanPanel'
 import { TaskList } from '@/components/TaskList'
 import type { User } from '@/api/client'
 import { Card, ErrorState, Loading, PageHeader } from '@/components/ui'
+import { SCAN_ROLES } from '@/lib/agents'
 import { percentOf, toNumber } from '@/lib/format'
 import { useAccounts } from './accounts'
 
-function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <Card className="p-5">
+function Kpi({ label, value, hint, to }: { label: string; value: string; hint?: string; to?: string }) {
+  const body = (
+    <>
       <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
       <div className="mt-2 text-3xl font-semibold tabular-nums">{value}</div>
       {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
-    </Card>
+    </>
+  )
+  return to ? (
+    <Link to={to} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:border-brand-300">{body}</Link>
+  ) : (
+    <Card className="p-5">{body}</Card>
   )
 }
 
@@ -46,7 +53,7 @@ export function CommandCentrePage({ user }: { user: User }) {
               <Kpi label="Accounts" value={String(rows.length)} hint="Across 6 GCC markets" />
               <Kpi label="Avg utilisation" value={`${avgUtil.toFixed(0)}%`} hint={`${hot} ${hot === 1 ? 'account' : 'accounts'} at 75% or more`} />
               <Kpi label="KYB attention" value={String(kybDue)} hint="Pending renewal or flagged" />
-              <Kpi label="Open alerts" value={String(alerts)} hint="Run a portfolio scan in Phase 4" />
+              <Kpi label="Open alerts" value={String(alerts)} hint="Early-warning signals: see the Risk radar" to="/risk" />
             </div>
           )
         })()
@@ -71,14 +78,18 @@ export function CommandCentrePage({ user }: { user: User }) {
             <TaskList tasks={tasks.data.filter((t) => t.status === 'OPEN')} />
           )}
         </Card>
-        <Card className="p-5 text-sm text-slate-600">
-          <p className="font-medium text-slate-900">What's next</p>
-          <p className="mt-1">
-            The four agents (briefing, KYB intake, early-warning scan and credit memo) arrive in Phase 4. Until then, try the demo agent on any account, or explore the{' '}
-            <Link to="/accounts" className="text-brand-700 underline">accounts</Link> and the{' '}
-            <Link to="/deals" className="text-brand-700 underline">pipeline</Link>.
-          </p>
-        </Card>
+        {SCAN_ROLES.has(user.role) ? (
+          <ScanPanel />
+        ) : (
+          <Card className="p-5 text-sm text-slate-600">
+            <p className="font-medium text-slate-900">Your queue</p>
+            <p className="mt-1">
+              KYB checks that find a discrepancy come to you for a second-person review in{' '}
+              <Link to="/approvals" className="text-brand-700 underline">Approvals</Link>. Every decision is on the{' '}
+              <Link to="/audit" className="text-brand-700 underline">audit trail</Link>.
+            </p>
+          </Card>
+        )}
       </div>
     </>
   )

@@ -195,6 +195,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/agents/ews-scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Ews Scan
+         * @description Scan the whole portfolio. Each company with new signals gets its own review and approval.
+         */
+        post: operations["start_ews_scan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/approvals": {
         parameters: {
             query?: never;
@@ -481,6 +501,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Signals
+         * @description Signals ranked by severity, then newest first. `open` includes ones being investigated.
+         */
+        get: operations["list_signals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ews/{signal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Signal */
+        patch: operations["update_signal"];
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -659,6 +716,12 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Parent Run Id */
+            parent_run_id?: string | null;
+            /** Result */
+            result: {
+                [key: string]: unknown;
+            } | null;
             status: components["schemas"]["AgentRunStatus"];
             /** Thread Id */
             thread_id: string;
@@ -696,6 +759,8 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Parent Run Id */
+            parent_run_id?: string | null;
             status: components["schemas"]["AgentRunStatus"];
             /** Thread Id */
             thread_id: string;
@@ -993,6 +1058,41 @@ export interface components {
          * @enum {string}
          */
         DocumentType: "TRADE_LICENSE" | "CR_CERTIFICATE" | "FINANCIAL_STATEMENT" | "BANK_STATEMENT" | "TAX_RETURN" | "UBO_DECLARATION";
+        /** EwsListItem */
+        EwsListItem: {
+            /**
+             * Company Id
+             * Format: uuid
+             */
+            company_id: string;
+            /** Company Name */
+            company_name: string;
+            /**
+             * Detected At
+             * Format: date-time
+             */
+            detected_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Metrics */
+            metrics: {
+                [key: string]: unknown;
+            };
+            /** Resolution Note */
+            resolution_note: string | null;
+            /** Resolved At */
+            resolved_at: string | null;
+            /** Resolved By Name */
+            resolved_by_name: string | null;
+            /** Root Cause Summary */
+            root_cause_summary: string | null;
+            severity: components["schemas"]["Severity"];
+            status: components["schemas"]["EwsStatus"];
+            trigger: components["schemas"]["EwsTrigger"];
+        };
         /** EwsOut */
         EwsOut: {
             /**
@@ -1009,6 +1109,8 @@ export interface components {
             metrics: {
                 [key: string]: unknown;
             };
+            /** Resolution Note */
+            resolution_note: string | null;
             /** Resolved At */
             resolved_at: string | null;
             /** Root Cause Summary */
@@ -1027,6 +1129,16 @@ export interface components {
          * @enum {string}
          */
         EwsTrigger: "CASHFLOW_DROP" | "UTILIZATION_SPIKE" | "DOC_EXPIRY" | "BOUNCED_CHEQUES" | "COVENANT_BREACH";
+        /** EwsUpdate */
+        EwsUpdate: {
+            /** Note */
+            note?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "INVESTIGATING" | "RESOLVED";
+        };
         /** FacilityOut */
         FacilityOut: {
             /** Alert Threshold Pct */
@@ -1640,6 +1752,8 @@ export interface operations {
         parameters: {
             query?: {
                 company_id?: string | null;
+                parent_run_id?: string | null;
+                agent_name?: string | null;
                 limit?: number;
             };
             header?: never;
@@ -1726,6 +1840,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_ews_scan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunSummary"];
                 };
             };
         };
@@ -2216,6 +2350,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgentRunSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_signals: {
+        parameters: {
+            query?: {
+                state?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EwsListItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_signal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                signal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EwsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EwsListItem"];
                 };
             };
             /** @description Validation Error */

@@ -23,6 +23,7 @@ class AgentRun(IdMixin, TimestampMixin, Base):
         str_enum(AgentRunStatus), default=AgentRunStatus.RUNNING
     )
     trace: Mapped[Json] = mapped_column(default=list)
+    result: Mapped[Json | None]
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 

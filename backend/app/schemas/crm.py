@@ -152,8 +152,20 @@ class EwsOut(OrmModel):
     status: EwsStatus
     metrics: dict[str, object]
     root_cause_summary: str | None
+    resolution_note: str | None
     detected_at: datetime
     resolved_at: datetime | None
+
+
+class EwsListItem(EwsOut):
+    company_id: uuid.UUID
+    company_name: str
+    resolved_by_name: str | None
+
+
+class EwsUpdate(BaseModel):
+    status: Literal["INVESTIGATING", "RESOLVED"]
+    note: str | None = Field(default=None, max_length=2000)
 
 
 # ---- Tasks ----

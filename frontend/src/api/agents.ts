@@ -33,6 +33,8 @@ export function useResolveApproval(id: string) {
       void qc.invalidateQueries({ queryKey: ['approvals'] })
       void qc.invalidateQueries({ queryKey: ['tasks'] })
       void qc.invalidateQueries({ queryKey: ['agent-runs'] })
+      // Approved actions change alerts, deals, owners and documents.
+      for (const key of ['ews', 'deals', 'accounts']) void qc.invalidateQueries({ queryKey: [key] })
     },
   })
 }

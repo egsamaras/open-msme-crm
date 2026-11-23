@@ -328,6 +328,30 @@
             "title": "Id",
             "type": "string"
           },
+          "parent_run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Run Id"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
           "status": {
             "$ref": "#/components/schemas/AgentRunStatus"
           },
@@ -367,6 +391,7 @@
           "created_at",
           "finished_at",
           "trace",
+          "result",
           "cited_records",
           "approval_ids"
         ],
@@ -446,6 +471,18 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "parent_run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Run Id"
           },
           "status": {
             "$ref": "#/components/schemas/AgentRunStatus"
@@ -1395,6 +1432,104 @@
         "title": "DocumentType",
         "type": "string"
       },
+      "EwsListItem": {
+        "properties": {
+          "company_id": {
+            "format": "uuid",
+            "title": "Company Id",
+            "type": "string"
+          },
+          "company_name": {
+            "title": "Company Name",
+            "type": "string"
+          },
+          "detected_at": {
+            "format": "date-time",
+            "title": "Detected At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "metrics": {
+            "additionalProperties": true,
+            "title": "Metrics",
+            "type": "object"
+          },
+          "resolution_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution Note"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "resolved_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved By Name"
+          },
+          "root_cause_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Root Cause Summary"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EwsStatus"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/EwsTrigger"
+          }
+        },
+        "required": [
+          "id",
+          "trigger",
+          "severity",
+          "status",
+          "metrics",
+          "root_cause_summary",
+          "resolution_note",
+          "detected_at",
+          "resolved_at",
+          "company_id",
+          "company_name",
+          "resolved_by_name"
+        ],
+        "title": "EwsListItem",
+        "type": "object"
+      },
       "EwsOut": {
         "properties": {
           "detected_at": {
@@ -1411,6 +1546,17 @@
             "additionalProperties": true,
             "title": "Metrics",
             "type": "object"
+          },
+          "resolution_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution Note"
           },
           "resolved_at": {
             "anyOf": [
@@ -1452,6 +1598,7 @@
           "status",
           "metrics",
           "root_cause_summary",
+          "resolution_note",
           "detected_at",
           "resolved_at"
         ],
@@ -1477,6 +1624,35 @@
         ],
         "title": "EwsTrigger",
         "type": "string"
+      },
+      "EwsUpdate": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "status": {
+            "enum": [
+              "INVESTIGATING",
+              "RESOLVED"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "EwsUpdate",
+        "type": "object"
       },
       "FacilityOut": {
         "properties": {
@@ -2803,6 +2979,39 @@
           },
           {
             "in": "query",
+            "name": "parent_run_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parent Run Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "agent_name",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Agent Name"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -2928,6 +3137,28 @@
         "summary": "Stream Run",
         "tags": [
           "agents"
+        ]
+      }
+    },
+    "/api/agents/ews-scan": {
+      "post": {
+        "description": "Scan the whole portfolio. Each company with new signals gets its own review and approval.",
+        "operationId": "start_ews_scan",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Start Ews Scan",
+        "tags": [
+          "risk"
         ]
       }
     },
@@ -3646,6 +3877,108 @@
         "summary": "Start Demo Followup",
         "tags": [
           "agents"
+        ]
+      }
+    },
+    "/api/ews": {
+      "get": {
+        "description": "Signals ranked by severity, then newest first. `open` includes ones being investigated.",
+        "operationId": "list_signals",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "default": "open",
+              "pattern": "^(open|resolved|all)$",
+              "title": "State",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EwsListItem"
+                  },
+                  "title": "Response List Signals",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Signals",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/api/ews/{signal_id}": {
+      "patch": {
+        "operationId": "update_signal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "signal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Signal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EwsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EwsListItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Signal",
+        "tags": [
+          "risk"
         ]
       }
     },

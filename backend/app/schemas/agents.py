@@ -15,6 +15,7 @@ class AgentRunSummary(BaseModel):
     company_id: uuid.UUID | None
     company_name: str | None
     deal_id: uuid.UUID | None
+    parent_run_id: uuid.UUID | None = None
     triggered_by_name: str | None
     created_at: datetime
     finished_at: datetime | None
@@ -29,6 +30,7 @@ class CitedRecord(BaseModel):
 
 class AgentRunDetail(AgentRunSummary):
     trace: list[dict[str, Any]]
+    result: dict[str, Any] | None
     cited_records: list[CitedRecord]
     approval_ids: list[uuid.UUID]
 

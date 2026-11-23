@@ -11,7 +11,7 @@ from sqlalchemy.orm import aliased
 from sse_starlette.sse import EventSourceResponse
 
 from app.agents import runtime
-from app.agents.actions import payload_schema
+from app.agents.actions import LOCKED_FIELDS, payload_schema
 from app.api.deps import CurrentUser, SessionDep, require_roles
 from app.core.config import get_settings
 from app.db.session import get_sessionmaker
@@ -51,6 +51,7 @@ def _run_summary(
         company_id=run.company_id,
         company_name=company_name,
         deal_id=run.deal_id,
+        parent_run_id=run.parent_run_id,
         triggered_by_name=trigger_name,
         created_at=run.created_at,
         finished_at=run.finished_at,
@@ -178,11 +179,13 @@ async def resolve_approval(
                     f"Edited payload is not valid: {e.errors()[0]['msg']}",
                 ) from e
             edited_json = edited.model_dump(mode="json")
-            # Fields the reviewer can't change stay as proposed.
-            if edited_json.get("company_id") != item.proposed_payload.get("company_id"):
-                raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_CONTENT, "You can't change the account"
-                )
+            # The target and the evidence stay as proposed.
+            for locked in LOCKED_FIELDS[item.action_type]:
+                if edited_json.get(locked) != item.proposed_payload.get(locked):
+                    what = "the account" if locked == "company_id" else locked.replace("_", " ")
+                    raise HTTPException(
+                        status.HTTP_422_UNPROCESSABLE_CONTENT, f"You can't change {what}"
+                    )
             if edited_json != item.proposed_payload:
                 item.edited_payload = edited_json
                 final = edited_json
@@ -221,6 +224,8 @@ async def list_runs(
     session: SessionDep,
     _: CurrentUser,
     company_id: uuid.UUID | None = None,
+    parent_run_id: uuid.UUID | None = None,
+    agent_name: str | None = None,
     limit: int = Query(default=50, ge=1, le=200),
 ) -> list[AgentRunSummary]:
     stmt = (
@@ -232,6 +237,10 @@ async def list_runs(
     )
     if company_id:
         stmt = stmt.where(AgentRun.company_id == company_id)
+    if parent_run_id:
+        stmt = stmt.where(AgentRun.parent_run_id == parent_run_id)
+    if agent_name:
+        stmt = stmt.where(AgentRun.agent_name == agent_name)
     return [_run_summary(r, c, t) for r, c, t in (await session.execute(stmt)).all()]
 
 
@@ -255,6 +264,7 @@ async def get_run(run_id: uuid.UUID, session: SessionDep, _: CurrentUser) -> Age
     return AgentRunDetail(
         **_run_summary(run, company_name, trigger).model_dump(),
         trace=run.trace,
+        result=run.result,
         cited_records=await describe_records(session, cited),
         approval_ids=approval_ids,
     )
