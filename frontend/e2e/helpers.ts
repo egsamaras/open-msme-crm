@@ -2,6 +2,7 @@ import { expect, type Page } from '@playwright/test'
 
 export const PERSONA = {
   rm: 'Relationship manager — Layla Rahman',
+  rm2: 'Relationship manager — Yusuf Darwish',
   credit: 'Credit officer — Omar Faris',
   compliance: 'Compliance officer — Noura Saleh',
 } as const

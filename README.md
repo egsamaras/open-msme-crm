@@ -26,6 +26,7 @@ or reject it, and every step is written to a tamper-evident audit trail.
 |---|---|
 | **Humans approve every consequential action** | LangGraph `interrupt()` before any write or outbound message; resume only through the approvals API. |
 | **Four-eyes on credit and compliance** | For credit memo submission, risk escalation and KYB changes the reviewer must be a different person with the right role — checked on the server. |
+| **RMs see only their own accounts** | Enforced on every route, including agent runs, approvals and scans; other accounts answer 404. Credit and compliance see the whole bank. |
 | **The LLM never does the maths** | DSCR, leverage, utilisation and covenant tests come from tested `Decimal` code. Snapshots store raw inputs only, never pre-computed ratios. |
 | **Every claim is cited** | Agent outputs carry the ids of the database records they used; unknown ids are rejected. |
 | **Tamper-evident audit** | Append-only table (a Postgres trigger blocks UPDATE, DELETE and TRUNCATE), with a SHA-256 hash chain you can verify. |
@@ -96,13 +97,13 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 and sign in as `rm@demo.local`, `credit@demo.local` or
+Open http://localhost:5173 and sign in as `rm@demo.local`, `rm2@demo.local`, `credit@demo.local` or
 `compliance@demo.local` with password `demo1234`. In development, the **View as** menu switches
 persona without signing out.
 
 A five-minute tour (use **View as** to switch persona):
 
-1. **Risk radar** as the RM: press **Run portfolio scan**. Four planted anomalies fire; each
+1. **Risk radar** as the RM Layla Rahman (the planted anomalies are on her accounts): press **Run portfolio scan**. Four planted anomalies fire; each
    company's review streams in and waits in **Approvals**. Approve or edit the simulated emails.
 2. As the **credit officer**, approve the escalations for Dunes Freight and Oasis Clinics. The
    alerts move to "investigating" and both of you get tasks.

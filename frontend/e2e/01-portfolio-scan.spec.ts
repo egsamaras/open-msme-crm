@@ -8,7 +8,7 @@ test('scan the portfolio, approve outreach and an escalation, resolve an alert',
 
   // The scan: fixed rules, then one review per flagged company, each waiting for approval.
   await page.getByRole('button', { name: 'Run portfolio scan' }).click()
-  await expect(page.getByText('4 alerts across the portfolio, 4 new.')).toBeVisible()
+  await expect(page.getByText('4 alerts across your accounts, 4 new.')).toBeVisible()
   const reviews = page.getByRole('listitem').filter({ hasText: 'Waiting for approval' })
   await expect(reviews).toHaveCount(4)
 

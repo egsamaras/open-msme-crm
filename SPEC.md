@@ -145,6 +145,12 @@ Four LangGraph workflows, checkpointed with `AsyncPostgresSaver` so a paused run
    output. Tests and CI use mock mode.
 9. **Data residency.** Seed data is synthetic. The README warns against sending real customer data to
    an external model and documents `openai_compatible` for self-hosted models.
+10. **Account access.** RMs see only accounts assigned to them, on every route: accounts, deals,
+    tasks, documents, alerts, approvals and agent runs. Anything else answers 404, so its existence
+    doesn't leak. Credit officers, compliance and admins see the whole bank. An RM's scan covers
+    only their accounts; cron and credit-officer scans cover the bank. The accounts list is ordered
+    by role: credit by alerts then risk, compliance by KYB status then soonest document expiry.
+    The rules live in `app/services/access.py`.
 
 ### 4.2 The four graphs
 
@@ -238,7 +244,7 @@ Every view handles loading, empty and error states.
 ## 6. Seed data
 
 `uv run python -m app.db.seed` — idempotent (deterministic UUIDs from names, upserts).
-- 4 users: one per role, password from `SEED_PASSWORD` (default `demo1234`, development only).
+- 5 users: two RMs (8 and 7 accounts; every planted anomaly is on the first) and one per other role, password from `SEED_PASSWORD` (default `demo1234`, development only).
 - 15 synthetic companies in Bahrain, Saudi Arabia, UAE, Kuwait, Oman and Qatar, across manufacturing,
   wholesale trade, logistics, healthcare clinics, F&B and construction; turnover equivalent to roughly
   USD 250k–15M. All names are invented.

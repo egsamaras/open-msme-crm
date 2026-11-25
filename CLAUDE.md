@@ -61,6 +61,9 @@ accessibility regression too.
 - **No real outbound messages.** Approved emails go to the outbox as `SIMULATED`.
 - **Audit events are append-only** (a database trigger blocks UPDATE/DELETE). Write them through
   `app/services/audit.py`, which maintains the hash chain.
+- **Account access** goes through `app/services/access.py`: `account_or_404` for one record,
+  `visible_accounts` / `visible_runs` in list queries. Every new route that exposes account data
+  needs one; `tests/test_access.py` fails when a route with an id in its path isn't listed there.
 - **RBAC on the server** via `Depends(require_roles(...))`. Frontend role checks are cosmetic only.
 - **Mock mode (`LLM_PROVIDER=mock`) runs the real graphs**, checkpointer and interrupts; only the LLM
   call is faked. Tests always use mock mode. Every LLM task needs a `@mock_handler` in its graph module.

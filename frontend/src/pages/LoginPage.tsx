@@ -3,6 +3,7 @@ import { useAppInfo, useLogin } from '@/auth'
 
 const DEMO_ACCOUNTS = [
   ['rm@demo.local', 'Relationship manager'],
+  ['rm2@demo.local', 'Relationship manager (other accounts)'],
   ['credit@demo.local', 'Credit officer'],
   ['compliance@demo.local', 'Compliance officer'],
 ] as const

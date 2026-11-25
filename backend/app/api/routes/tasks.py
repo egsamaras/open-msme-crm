@@ -3,10 +3,11 @@ import uuid
 from fastapi import APIRouter, HTTPException, Query, status
 
 from app.api.deps import CurrentUser, SessionDep
-from app.models import Company, Deal, Task, User
+from app.models import Deal, Task, User
 from app.models.enums import Role, TaskSource, TaskStatus
 from app.schemas.crm import TaskIn, TaskOut, TaskPatch
 from app.services import audit
+from app.services.access import account_or_404, can_see
 from app.services.tasks import query_tasks
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -19,13 +20,14 @@ async def list_tasks(
     mine: bool = True,
     status_filter: TaskStatus | None = Query(default=None, alias="status"),
 ) -> list[TaskOut]:
-    return await query_tasks(session, assignee_id=user.id if mine else None, status=status_filter)
+    return await query_tasks(
+        session, user, assignee_id=user.id if mine else None, status=status_filter
+    )
 
 
 @router.post("", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
 async def create_task(body: TaskIn, session: SessionDep, user: CurrentUser) -> TaskOut:
-    if await session.get(Company, body.company_id) is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such account")
+    company = await account_or_404(session, body.company_id, user)
     if body.deal_id:
         deal = await session.get(Deal, body.deal_id)
         if deal is None or deal.company_id != body.company_id:
@@ -34,7 +36,7 @@ async def create_task(body: TaskIn, session: SessionDep, user: CurrentUser) -> T
             )
     assignee_id = body.assignee_id or user.id
     assignee = await session.get(User, assignee_id)
-    if assignee is None or not assignee.is_active:
+    if assignee is None or not assignee.is_active or not can_see(assignee, company):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "No such assignee")
     task = Task(
         company_id=body.company_id,
@@ -56,7 +58,7 @@ async def create_task(body: TaskIn, session: SessionDep, user: CurrentUser) -> T
         actor_user_id=user.id,
     )
     await session.commit()
-    return (await query_tasks(session, task_id=task.id))[0]
+    return (await query_tasks(session, user, task_id=task.id))[0]
 
 
 @router.patch("/{task_id}", response_model=TaskOut)
@@ -66,6 +68,7 @@ async def update_task(
     task = await session.get(Task, task_id)
     if task is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such task")
+    await account_or_404(session, task.company_id, user, "No such task")
     if task.assignee_id != user.id and user.role != Role.ADMIN:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the assignee can update this task")
     if task.status != body.status:
@@ -80,4 +83,4 @@ async def update_task(
             actor_user_id=user.id,
         )
         await session.commit()
-    return (await query_tasks(session, task_id=task.id))[0]
+    return (await query_tasks(session, user, task_id=task.id))[0]

@@ -356,7 +356,7 @@ ACTIONS: dict[ActionType, tuple[type[BaseModel], Applier]] = {
 
 # Fields a reviewer may not change when editing: the evidence and the target stay as proposed.
 LOCKED_FIELDS: dict[ActionType, tuple[str, ...]] = {
-    ActionType.CREATE_TASK: ("company_id",),
+    ActionType.CREATE_TASK: ("company_id", "assignee_id"),
     ActionType.SEND_EMAIL: ("company_id",),
     ActionType.ESCALATE_EWS: ("company_id", "signal_ids"),
     ActionType.SUBMIT_CAM: ("company_id", "deal_id", "ratios", "assumptions"),

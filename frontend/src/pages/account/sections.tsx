@@ -476,7 +476,7 @@ export function EwsTab({ account }: Props) {
         {() =>
           ews.data!.length === 0 ? (
             <EmptyState title="No early-warning alerts">
-              <p>Alerts appear here after a portfolio scan (Phase 4).</p>
+              <p>Alerts appear here after a portfolio scan.</p>
             </EmptyState>
           ) : (
             <ul className="divide-y divide-slate-100 text-sm">

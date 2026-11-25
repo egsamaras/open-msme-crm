@@ -27,6 +27,7 @@ from app.schemas.agents import (
     ResolveIn,
 )
 from app.services import audit
+from app.services.access import account_or_404, visible_runs
 from app.services.approvals import is_four_eyes, required_roles, review_blocker
 from app.services.records import describe_records
 
@@ -102,7 +103,11 @@ def _approval_out(row: Any, user: User) -> ApprovalOut:
 
 
 async def _load_approval(session: SessionDep, approval_id: uuid.UUID, user: User) -> ApprovalOut:
-    row = (await session.execute(_approvals_query().where(ApprovalItem.id == approval_id))).first()
+    row = (
+        await session.execute(
+            _approvals_query().where(ApprovalItem.id == approval_id, visible_runs(user))
+        )
+    ).first()
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such approval item")
     return _approval_out(row, user)
@@ -118,7 +123,12 @@ async def list_approvals(
     state: str = Query(default="pending", pattern="^(pending|resolved|all)$"),
     limit: int = Query(default=100, ge=1, le=500),
 ) -> list[ApprovalOut]:
-    stmt = _approvals_query().order_by(ApprovalItem.created_at.desc()).limit(limit)
+    stmt = (
+        _approvals_query()
+        .where(visible_runs(user))
+        .order_by(ApprovalItem.created_at.desc())
+        .limit(limit)
+    )
     if state == "pending":
         stmt = stmt.where(ApprovalItem.status == ApprovalStatus.PENDING)
     elif state == "resolved":
@@ -131,7 +141,9 @@ async def list_approvals(
 async def count_approvals(session: SessionDep, user: CurrentUser) -> ApprovalCount:
     pending = list(
         await session.scalars(
-            select(ApprovalItem).where(ApprovalItem.status == ApprovalStatus.PENDING)
+            select(ApprovalItem)
+            .join(AgentRun, AgentRun.id == ApprovalItem.agent_run_id)
+            .where(ApprovalItem.status == ApprovalStatus.PENDING, visible_runs(user))
         )
     )
     return ApprovalCount(
@@ -153,7 +165,10 @@ async def resolve_approval(
 ) -> ApprovalOut:
     # Lock the row so two reviewers can't both resolve it.
     item = await session.scalar(
-        select(ApprovalItem).where(ApprovalItem.id == approval_id).with_for_update()
+        select(ApprovalItem)
+        .join(AgentRun, AgentRun.id == ApprovalItem.agent_run_id)
+        .where(ApprovalItem.id == approval_id, visible_runs(user))
+        .with_for_update(of=ApprovalItem)
     )
     if item is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such approval item")
@@ -213,6 +228,7 @@ async def resolve_approval(
 
     await runtime.resume(run_id, decision=new_status.value, payload=final, reviewer_id=user.id)
     session.expire_all()
+    await session.refresh(user)
     return await _load_approval(session, approval_id, user)
 
 
@@ -222,7 +238,7 @@ async def resolve_approval(
 @router.get("/api/agent-runs", response_model=list[AgentRunSummary])
 async def list_runs(
     session: SessionDep,
-    _: CurrentUser,
+    user: CurrentUser,
     company_id: uuid.UUID | None = None,
     parent_run_id: uuid.UUID | None = None,
     agent_name: str | None = None,
@@ -232,6 +248,7 @@ async def list_runs(
         select(AgentRun, Company.trading_name, Trigger.full_name)
         .outerjoin(Company, Company.id == AgentRun.company_id)
         .outerjoin(Trigger, Trigger.id == AgentRun.triggered_by_id)
+        .where(visible_runs(user))
         .order_by(AgentRun.created_at.desc())
         .limit(limit)
     )
@@ -245,13 +262,13 @@ async def list_runs(
 
 
 @router.get("/api/agent-runs/{run_id}", response_model=AgentRunDetail)
-async def get_run(run_id: uuid.UUID, session: SessionDep, _: CurrentUser) -> AgentRunDetail:
+async def get_run(run_id: uuid.UUID, session: SessionDep, user: CurrentUser) -> AgentRunDetail:
     row = (
         await session.execute(
             select(AgentRun, Company.trading_name, Trigger.full_name)
             .outerjoin(Company, Company.id == AgentRun.company_id)
             .outerjoin(Trigger, Trigger.id == AgentRun.triggered_by_id)
-            .where(AgentRun.id == run_id)
+            .where(AgentRun.id == run_id, visible_runs(user))
         )
     ).first()
     if row is None:
@@ -271,8 +288,14 @@ async def get_run(run_id: uuid.UUID, session: SessionDep, _: CurrentUser) -> Age
 
 
 @router.get("/api/agent-runs/{run_id}/stream")
-async def stream_run(run_id: uuid.UUID, request: Request, _: CurrentUser) -> EventSourceResponse:
+async def stream_run(
+    run_id: uuid.UUID, request: Request, session: SessionDep, user: CurrentUser
+) -> EventSourceResponse:
     """Server-Sent Events: trace events as they're written, then the final status."""
+    visible = select(AgentRun.id).where(AgentRun.id == run_id, visible_runs(user))
+    if await session.scalar(visible) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such agent run")
+    await session.close()  # don't hold a connection for the life of the stream
     pause = {AgentRunStatus.AWAITING_APPROVAL, *runtime.TERMINAL}
 
     async def events() -> AsyncIterator[dict[str, str]]:
@@ -313,9 +336,7 @@ async def start_demo_followup(
     """Development only: run the demo agent, which proposes one follow-up task for approval."""
     if not get_settings().is_dev:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
-    company = await session.get(Company, company_id)
-    if company is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such account")
+    company = await account_or_404(session, company_id, user)
     run = await runtime.create_run(
         session, agent_name="demo_followup", user_id=user.id, company_id=company_id
     )

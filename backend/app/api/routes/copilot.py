@@ -12,6 +12,7 @@ from app.models import AgentRun, ApprovalItem, Company, Deal, User
 from app.models.enums import ActionType, AgentRunStatus, ApprovalStatus, DealStage, Role
 from app.schemas.agents import AgentRunSummary
 from app.services import audit
+from app.services.access import account_or_404
 
 router = APIRouter(tags=["agents"])
 
@@ -68,6 +69,7 @@ async def start_cam(
     deal = await session.get(Deal, deal_id)
     if deal is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such deal")
+    company = await account_or_404(session, deal.company_id, user, "No such deal")
     if deal.stage != DealStage.CREDIT_UNDERWRITING:
         raise HTTPException(
             status.HTTP_409_CONFLICT, "Credit memos are drafted for deals in credit underwriting"
@@ -90,8 +92,6 @@ async def start_cam(
         raise HTTPException(
             status.HTTP_409_CONFLICT, "A credit memo for this deal is already in progress"
         )
-    company = await session.get(Company, deal.company_id)
-    assert company is not None
     return await _start(
         session,
         background,
@@ -112,9 +112,7 @@ async def start_briefing(
     company_id: uuid.UUID, background: BackgroundTasks, session: SessionDep, user: CurrentUser
 ) -> AgentRunSummary:
     """Read-only briefing for a client meeting. Follow its progress on the run's /stream."""
-    company = await session.get(Company, company_id)
-    if company is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such account")
+    company = await account_or_404(session, company_id, user)
     return await _start(
         session,
         background,

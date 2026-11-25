@@ -11,7 +11,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Accounts */
+        /**
+         * List Accounts
+         * @description Accounts the user may see, in the order most useful to their role.
+         */
         get: operations["list_accounts"];
         put?: never;
         post?: never;
@@ -246,7 +249,7 @@ export interface paths {
         put?: never;
         /**
          * Start Ews Scan
-         * @description Scan the whole portfolio. Each company with new signals gets its own review and approval.
+         * @description Scan the accounts the user may see. Each flagged company gets its own review.
          */
         post: operations["start_ews_scan"];
         delete?: never;
@@ -751,6 +754,8 @@ export interface components {
             kyb_status: components["schemas"]["KybStatus"];
             /** Legal Name */
             legal_name: string;
+            /** Next Doc Expiry */
+            next_doc_expiry?: string | null;
             /** Open Ews */
             open_ews: number;
             /** Risk Rating */
@@ -1608,7 +1613,6 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string | null;
-                mine?: boolean;
             };
             header?: never;
             path?: never;

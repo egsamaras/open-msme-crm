@@ -2,9 +2,10 @@ import uuid
 from collections import defaultdict
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.config import get_settings
@@ -21,7 +22,7 @@ from app.models import (
     Interaction,
     User,
 )
-from app.models.enums import EwsStatus, PeriodType, Role, TaskStatus
+from app.models.enums import EwsStatus, KybStatus, PeriodType, Role, TaskStatus
 from app.schemas.common import AccountListItem
 from app.schemas.crm import (
     AccountDetail,
@@ -39,6 +40,7 @@ from app.schemas.crm import (
 )
 from app.services import audit
 from app.services import financial_math as fm
+from app.services.access import account_or_404, visible_accounts
 from app.services.tasks import query_tasks
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
@@ -49,8 +51,8 @@ async def list_accounts(
     session: SessionDep,
     user: CurrentUser,
     q: str | None = Query(default=None, max_length=100),
-    mine: bool = False,
 ) -> list[AccountListItem]:
+    """Accounts the user may see, in the order most useful to their role."""
     limits = (
         select(
             Facility.company_id,
@@ -66,14 +68,35 @@ async def list_accounts(
         .group_by(EarlyWarningSignal.company_id)
         .subquery()
     )
+    expiry = (
+        select(Document.company_id, func.min(Document.expiry_date).label("next_expiry"))
+        .group_by(Document.company_id)
+        .subquery()
+    )
+    order: list[Any] = [Company.legal_name]
+    if user.role == Role.CREDIT_OFFICER:
+        alerts = func.coalesce(ews.c.open_ews, 0)
+        order = [alerts.desc(), Company.risk_rating.desc(), *order]
+    elif user.role == Role.COMPLIANCE:
+        kyb = case(
+            {KybStatus.FLAGGED: 0, KybStatus.PENDING_RENEWAL: 1}, value=Company.kyb_status, else_=2
+        )
+        order = [kyb, expiry.c.next_expiry.asc().nulls_last(), *order]
     stmt = (
         select(
-            Company, User.full_name, limits.c.total_limit, limits.c.total_utilized, ews.c.open_ews
+            Company,
+            User.full_name,
+            limits.c.total_limit,
+            limits.c.total_utilized,
+            ews.c.open_ews,
+            expiry.c.next_expiry,
         )
         .outerjoin(User, User.id == Company.rm_id)
         .outerjoin(limits, limits.c.company_id == Company.id)
         .outerjoin(ews, ews.c.company_id == Company.id)
-        .order_by(Company.legal_name)
+        .outerjoin(expiry, expiry.c.company_id == Company.id)
+        .where(visible_accounts(user))
+        .order_by(*order)
     )
     if q:
         like = f"%{q}%"
@@ -84,9 +107,6 @@ async def list_accounts(
                 Company.cr_number.ilike(like),
             )
         )
-    if mine and user.role == Role.RM:
-        stmt = stmt.where(Company.rm_id == user.id)
-
     rows = await session.execute(stmt)
     return [
         AccountListItem.model_validate(
@@ -100,22 +120,18 @@ async def list_accounts(
                 "total_limit": total_limit or Decimal(0),
                 "total_utilized": total_utilized or Decimal(0),
                 "open_ews": open_ews or 0,
+                "next_doc_expiry": next_expiry,
             }
         )
-        for company, rm_name, total_limit, total_utilized, open_ews in rows.all()
+        for company, rm_name, total_limit, total_utilized, open_ews, next_expiry in rows.all()
     ]
 
 
-async def company_or_404(session: SessionDep, company_id: uuid.UUID) -> Company:
-    company = await session.get(Company, company_id)
-    if company is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such account")
-    return company
-
-
 @router.get("/{company_id}", response_model=AccountDetail)
-async def get_account(company_id: uuid.UUID, session: SessionDep, _: CurrentUser) -> AccountDetail:
-    company = await company_or_404(session, company_id)
+async def get_account(
+    company_id: uuid.UUID, session: SessionDep, user: CurrentUser
+) -> AccountDetail:
+    company = await account_or_404(session, company_id, user)
     threshold = get_settings().ubo_threshold_pct
     rm = await session.get(User, company.rm_id) if company.rm_id else None
     owners = await session.scalars(
@@ -161,9 +177,9 @@ async def _monthly_snapshots(session: SessionDep, company_id: uuid.UUID) -> list
 
 @router.get("/{company_id}/financials", response_model=list[SnapshotOut])
 async def get_financials(
-    company_id: uuid.UUID, session: SessionDep, _: CurrentUser
+    company_id: uuid.UUID, session: SessionDep, user: CurrentUser
 ) -> list[SnapshotOut]:
-    await company_or_404(session, company_id)
+    await account_or_404(session, company_id, user)
     snapshots = await _monthly_snapshots(session, company_id)
     out: list[SnapshotOut] = []
     prev: FinancialSnapshot | None = None
@@ -189,9 +205,9 @@ async def get_financials(
 
 @router.get("/{company_id}/facilities", response_model=list[FacilityOut])
 async def get_facilities(
-    company_id: uuid.UUID, session: SessionDep, _: CurrentUser
+    company_id: uuid.UUID, session: SessionDep, user: CurrentUser
 ) -> list[FacilityOut]:
-    await company_or_404(session, company_id)
+    await account_or_404(session, company_id, user)
     threshold = get_settings().ews_utilization_pct
     facilities = list(
         await session.scalars(
@@ -258,9 +274,9 @@ async def get_facilities(
 
 @router.get("/{company_id}/documents", response_model=list[DocumentOut])
 async def get_documents(
-    company_id: uuid.UUID, session: SessionDep, _: CurrentUser
+    company_id: uuid.UUID, session: SessionDep, user: CurrentUser
 ) -> list[DocumentOut]:
-    await company_or_404(session, company_id)
+    await account_or_404(session, company_id, user)
     rows = list(
         await session.scalars(
             select(Document)
@@ -303,9 +319,9 @@ def _started_doc(run: AgentRun) -> str | None:
 
 @router.get("/{company_id}/interactions", response_model=list[InteractionOut])
 async def get_interactions(
-    company_id: uuid.UUID, session: SessionDep, _: CurrentUser
+    company_id: uuid.UUID, session: SessionDep, user: CurrentUser
 ) -> list[InteractionOut]:
-    await company_or_404(session, company_id)
+    await account_or_404(session, company_id, user)
     rows = await session.execute(
         select(Interaction, User.full_name)
         .outerjoin(User, User.id == Interaction.user_id)
@@ -332,7 +348,7 @@ def _interaction_out(i: Interaction, user_name: str | None) -> InteractionOut:
 async def log_interaction(
     company_id: uuid.UUID, body: InteractionIn, session: SessionDep, user: CurrentUser
 ) -> InteractionOut:
-    await company_or_404(session, company_id)
+    await account_or_404(session, company_id, user)
     if body.occurred_at.tzinfo is None:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "occurred_at needs a timezone")
     if body.occurred_at > datetime.now(UTC):
@@ -354,9 +370,9 @@ async def log_interaction(
 
 @router.get("/{company_id}/ews", response_model=list[EwsOut])
 async def get_ews(
-    company_id: uuid.UUID, session: SessionDep, _: CurrentUser
+    company_id: uuid.UUID, session: SessionDep, user: CurrentUser
 ) -> list[EarlyWarningSignal]:
-    await company_or_404(session, company_id)
+    await account_or_404(session, company_id, user)
     rows = await session.scalars(
         select(EarlyWarningSignal)
         .where(EarlyWarningSignal.company_id == company_id)
@@ -369,8 +385,8 @@ async def get_ews(
 async def get_account_tasks(
     company_id: uuid.UUID,
     session: SessionDep,
-    _: CurrentUser,
+    user: CurrentUser,
     status_filter: TaskStatus | None = Query(default=None, alias="status"),
 ) -> list[TaskOut]:
-    company = await company_or_404(session, company_id)
-    return await query_tasks(session, company_id=company.id, status=status_filter)
+    company = await account_or_404(session, company_id, user)
+    return await query_tasks(session, user, company_id=company.id, status=status_filter)

@@ -7,10 +7,12 @@ from sqlalchemy.orm import aliased
 from app.models import Company, Task, User
 from app.models.enums import TaskStatus
 from app.schemas.crm import TaskOut
+from app.services.access import visible_accounts
 
 
 async def query_tasks(
     session: AsyncSession,
+    user: User,
     *,
     company_id: uuid.UUID | None = None,
     assignee_id: uuid.UUID | None = None,
@@ -22,6 +24,7 @@ async def query_tasks(
         select(Task, Company.trading_name, Company.legal_name, assignee.full_name)
         .join(Company, Company.id == Task.company_id)
         .outerjoin(assignee, assignee.id == Task.assignee_id)
+        .where(visible_accounts(user))
         .order_by(Task.status, Task.due_date.asc().nulls_last(), Task.title)
     )
     if company_id:

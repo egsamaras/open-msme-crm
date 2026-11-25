@@ -10,6 +10,7 @@ from app.models import AgentRun, Company, Deal, Document, User
 from app.models.enums import DealStage, Role
 from app.schemas.crm import DealDetail, DealIn, DealOut, DealPatch, DraftCamOut
 from app.services import audit
+from app.services.access import account_or_404, visible_accounts
 from app.services.pipeline import allowed_stages, build_checklist, checklist_complete
 
 router = APIRouter(prefix="/api/deals", tags=["deals"])
@@ -45,7 +46,7 @@ def _deal_out(deal: Deal, company: Company, owner_name: str | None) -> DealOut:
 @router.get("", response_model=list[DealOut])
 async def list_deals(
     session: SessionDep,
-    _: CurrentUser,
+    user: CurrentUser,
     stage: DealStage | None = None,
     company_id: uuid.UUID | None = None,
     q: str | None = Query(default=None, max_length=100),
@@ -54,6 +55,7 @@ async def list_deals(
         select(Deal, Company, User.full_name)
         .join(Company, Company.id == Deal.company_id)
         .outerjoin(User, User.id == Deal.owner_id)
+        .where(visible_accounts(user))
         .order_by(Deal.expected_close.asc().nulls_last(), Deal.title)
     )
     if stage:
@@ -66,13 +68,13 @@ async def list_deals(
     return [_deal_out(d, c, n) for d, c, n in rows.all()]
 
 
-async def _detail(session: SessionDep, deal_id: uuid.UUID, role: Role) -> DealDetail:
+async def _detail(session: SessionDep, deal_id: uuid.UUID, user: User) -> DealDetail:
     row = (
         await session.execute(
             select(Deal, Company, User.full_name)
             .join(Company, Company.id == Deal.company_id)
             .outerjoin(User, User.id == Deal.owner_id)
-            .where(Deal.id == deal_id)
+            .where(Deal.id == deal_id, visible_accounts(user))
         )
     ).first()
     if row is None:
@@ -91,7 +93,7 @@ async def _detail(session: SessionDep, deal_id: uuid.UUID, role: Role) -> DealDe
         **_deal_out(deal, company, owner_name).model_dump(),
         checklist=checklist,
         checklist_complete=checklist_complete(checklist),
-        allowed_stages=allowed_stages(deal.stage, role),
+        allowed_stages=allowed_stages(deal.stage, user.role),
         draft_cam=DraftCamOut.model_validate(deal.draft_cam) if deal.draft_cam else None,
         credit_officer_name=officer.full_name if officer else None,
         cam_run_id=cam_run.id if cam_run else None,
@@ -101,7 +103,7 @@ async def _detail(session: SessionDep, deal_id: uuid.UUID, role: Role) -> DealDe
 
 @router.get("/{deal_id}", response_model=DealDetail)
 async def get_deal(deal_id: uuid.UUID, session: SessionDep, user: CurrentUser) -> DealDetail:
-    return await _detail(session, deal_id, user.role)
+    return await _detail(session, deal_id, user)
 
 
 @router.post("", response_model=DealDetail, status_code=status.HTTP_201_CREATED)
@@ -110,8 +112,7 @@ async def create_deal(
     session: SessionDep,
     user: Annotated[User, Depends(require_roles(Role.RM))],
 ) -> DealDetail:
-    if await session.get(Company, body.company_id) is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such account")
+    await account_or_404(session, body.company_id, user)
     deal = Deal(
         **body.model_dump(),
         stage=DealStage.LEAD,
@@ -129,7 +130,7 @@ async def create_deal(
         actor_user_id=user.id,
     )
     await session.commit()
-    return await _detail(session, deal.id, user.role)
+    return await _detail(session, deal.id, user)
 
 
 @router.patch("/{deal_id}", response_model=DealDetail)
@@ -142,6 +143,7 @@ async def update_deal(
     deal = await session.get(Deal, deal_id)
     if deal is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such deal")
+    await account_or_404(session, deal.company_id, user, "No such deal")
     if user.role == Role.RM and deal.owner_id != user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You can only edit your own deals")
 
@@ -179,4 +181,4 @@ async def update_deal(
             actor_user_id=user.id,
         )
         await session.commit()
-    return await _detail(session, deal.id, user.role)
+    return await _detail(session, deal.id, user)

@@ -175,6 +175,18 @@
             "title": "Legal Name",
             "type": "string"
           },
+          "next_doc_expiry": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Doc Expiry"
+          },
           "open_ews": {
             "title": "Open Ews",
             "type": "integer"
@@ -2668,6 +2680,7 @@
   "paths": {
     "/api/accounts": {
       "get": {
+        "description": "Accounts the user may see, in the order most useful to their role.",
         "operationId": "list_accounts",
         "parameters": [
           {
@@ -2685,16 +2698,6 @@
                 }
               ],
               "title": "Q"
-            }
-          },
-          {
-            "in": "query",
-            "name": "mine",
-            "required": false,
-            "schema": {
-              "default": false,
-              "title": "Mine",
-              "type": "boolean"
             }
           }
         ],
@@ -3396,7 +3399,7 @@
     },
     "/api/agents/ews-scan": {
       "post": {
-        "description": "Scan the whole portfolio. Each company with new signals gets its own review and approval.",
+        "description": "Scan the accounts the user may see. Each flagged company gets its own review.",
         "operationId": "start_ews_scan",
         "responses": {
           "202": {

@@ -22,6 +22,7 @@ from app.models import AgentRun, Company, Document, User
 from app.models.enums import AgentRunStatus, DocumentType, Role, VerificationStatus
 from app.schemas.agents import AgentRunSummary
 from app.services import audit
+from app.services.access import account_or_404
 from app.services.kyb import MAX_UPLOAD_BYTES, text_from_upload
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
@@ -86,9 +87,7 @@ async def upload_document(
     file: Annotated[UploadFile, File(description=".txt, .json or .pdf, up to 1 MB")],
 ) -> AgentRunSummary:
     """Store a document (pending) and start its KYB check. Its text is treated as untrusted."""
-    company = await session.get(Company, company_id)
-    if company is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such account")
+    company = await account_or_404(session, company_id, user)
     data = await file.read(MAX_UPLOAD_BYTES + 1)
     name = _safe_name(file.filename or "document.txt")
     try:
@@ -127,10 +126,9 @@ async def check_document(
     doc = await session.get(Document, document_id)
     if doc is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such document")
+    company = await account_or_404(session, doc.company_id, user, "No such document")
     if not doc.content_text:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT, "This document has no text on file to check"
         )
-    company = await session.get(Company, doc.company_id)
-    assert company is not None
     return await _start_check(session, background, user, doc, company)

@@ -32,7 +32,7 @@ export function CommandCentrePage({ user }: { user: User }) {
 
   return (
     <>
-      <PageHeader title={`Good day, ${first}`} description="Your portfolio at a glance." />
+      <PageHeader title={`Good day, ${first}`} description={user.role === 'RM' ? 'Your portfolio at a glance.' : 'The whole bank at a glance.'} />
       {accounts.isPending ? (
         <Loading />
       ) : accounts.isError ? (
@@ -50,7 +50,7 @@ export function CommandCentrePage({ user }: { user: User }) {
           const alerts = rows.reduce((n, r) => n + toNumber(r.open_ews), 0)
           return (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <Kpi label="Accounts" value={String(rows.length)} hint="Across 6 GCC markets" />
+              <Kpi label="Accounts" value={String(rows.length)} hint={`Across ${new Set(rows.map((r) => r.country)).size} GCC markets`} />
               <Kpi label="Avg utilisation" value={`${avgUtil.toFixed(0)}%`} hint={`${hot} ${hot === 1 ? 'account' : 'accounts'} at 75% or more`} />
               <Kpi label="KYB attention" value={String(kybDue)} hint="Pending renewal or flagged" />
               <Kpi label="Open alerts" value={String(alerts)} hint="Early-warning signals: see the Risk radar" to="/risk" />
