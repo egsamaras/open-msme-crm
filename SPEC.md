@@ -168,7 +168,8 @@ Four LangGraph workflows, checkpointed with `AsyncPostgresSaver` so a paused run
       status then next expiry. Next expiry looks at the trade licence and the CR certificate. For
       each, it takes the latest expiry date on a verified document; the list shows the earlier of
       the two. A verified renewal moves it; pending or rejected uploads and other documents don't
-      count. The `DOC_EXPIRY` early-warning rule (4.2) looks at the same documents.
+      count. The briefing's expiry gaps and the `DOC_EXPIRY` early-warning rule (4.2) look at the
+      same documents.
     - **In code.** Who may see an account is decided in `app/services/access.py`.
 
 ### 4.2 The four graphs
@@ -178,6 +179,10 @@ Four LangGraph workflows, checkpointed with `AsyncPostgresSaver` so a paused run
 `GET /api/agent-runs/{id}/stream` (SSE), like every agent run.
 `fetch_account_context` → `compute_health_metrics` (deterministic) → `synthesize_briefing`.
 Output: account health, talking points, open document/compliance gaps, and up to 2 product ideas.
+Gaps are required documents missing, documents pending or rejected, and the trade licence or CR
+certificate in force (4.1) expiring within 60 days or expired, which also makes health at least
+`WATCH`. A verified renewal clears the old document's expiry gap; a pending or rejected upload
+doesn't, and never shows as expiring itself. Other document types never make an expiry gap.
 Health (`GOOD` / `WATCH` / `CONCERN`) and the product candidates come from rules on computed
 metrics: working capital above 85% for 8+ weeks → limit review or term-out; an LC line and no FX
 line → FX line; average balance swinging 15%+ peak to trough over six months → Murabaha working

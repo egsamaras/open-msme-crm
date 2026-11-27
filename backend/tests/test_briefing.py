@@ -1,7 +1,8 @@
 """Phase 4, graph 1: pre-meeting briefing. Read-only; rules pick health and products."""
 
 import uuid
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -13,17 +14,46 @@ from app.agents import llm
 from app.agents.graphs import briefing
 from app.db.seed import sid
 from app.models import ApprovalItem, AuditEvent
+from app.models.enums import DocumentType, VerificationStatus
 from tests.conftest import login
 
 PEARL = sid("company", "pearl-bay")  # licence expiring in under 30 days
 DUNES = sid("company", "dunes-logistics")  # holds an LC line, no FX line
 
+TODAY = date(2026, 11, 23)
+LICENCE, CERTIFICATE = DocumentType.TRADE_LICENSE, DocumentType.CR_CERTIFICATE
+PENDING, REJECTED = VerificationStatus.PENDING, VerificationStatus.REJECTED
+ON_FILE = [
+    LICENCE,
+    CERTIFICATE,
+    DocumentType.UBO_DECLARATION,
+    DocumentType.FINANCIAL_STATEMENT,
+    DocumentType.BANK_STATEMENT,
+]
 
-def _facts(**over: Any) -> dict[str, Any]:
-    today = date(2026, 11, 23)
+
+def _doc(
+    doc_type: DocumentType,
+    days: int | None = None,
+    state: VerificationStatus = VerificationStatus.VERIFIED,
+    added: int = 0,
+) -> Any:
+    """A document expiring `days` after TODAY (None: undated), added `added` hours after others."""
+    return SimpleNamespace(
+        id=uuid.uuid4(),
+        doc_type=doc_type,
+        file_name=f"{doc_type.value.lower()}.pdf",
+        expiry_date=None if days is None else TODAY + timedelta(days=days),
+        verification_status=state,
+        created_at=datetime(2026, 1, 1, tzinfo=UTC) + timedelta(hours=added),
+    )
+
+
+def _facts(*docs: Any, **over: Any) -> dict[str, Any]:
+    """An account with every required document on file, verified and undated, plus `docs`."""
     wc = str(uuid.uuid4())
     base: dict[str, Any] = {
-        "today": today.isoformat(),
+        "today": TODAY.isoformat(),
         "company": {"id": str(uuid.uuid4())},
         "facilities": [
             {
@@ -53,21 +83,7 @@ def _facts(**over: Any) -> dict[str, Any]:
                 "bounced_cheques": 0,
             }
         ],
-        "documents": [
-            {
-                "id": str(uuid.uuid4()),
-                "doc_type": t,
-                "expiry_date": None,
-                "verification_status": "VERIFIED",
-            }
-            for t in [
-                "TRADE_LICENSE",
-                "CR_CERTIFICATE",
-                "UBO_DECLARATION",
-                "FINANCIAL_STATEMENT",
-                "BANK_STATEMENT",
-            ]
-        ],
+        "documents": briefing.document_facts([_doc(t) for t in ON_FILE] + list(docs)),
         "open_signals": [],
     }
     base.update(over)
@@ -92,18 +108,59 @@ def test_hot_line_or_expiring_document_is_worth_watching() -> None:
     hot = _facts()
     hot["facilities"][0]["utilized"] = "90"
     assert briefing.compute_metrics(hot)["health"] == "WATCH"
-    expiring = _facts()
-    expiring["documents"][0]["expiry_date"] = (date(2026, 11, 23) + timedelta(days=20)).isoformat()
-    m = briefing.compute_metrics(expiring)
+    licence = _doc(LICENCE, 20)
+    m = briefing.compute_metrics(_facts(licence))
     assert m["health"] == "WATCH"
     assert m["gaps"] == [
         {
             "kind": "expiring",
             "doc_type": "TRADE_LICENSE",
             "days_left": 20,
-            "id": expiring["documents"][0]["id"],
+            "id": str(licence.id),
         }
     ]
+
+
+# Only the licence or certificate in force can be expiring, by the rule the Accounts list and the
+# early-warning scan use: for each type, the verified document that expires last.
+
+
+def _gaps(*docs: Any) -> tuple[str, list[tuple[str, str]]]:
+    """Health, and the kind and document id of each gap, with `docs` on file too."""
+    m = briefing.compute_metrics(_facts(*docs))
+    return m["health"], [(g["kind"], g["id"]) for g in m["gaps"]]
+
+
+def test_a_verified_renewal_removes_the_expiring_gap() -> None:
+    old = _doc(LICENCE, 20)
+    assert _gaps(old) == ("WATCH", [("expiring", str(old.id))])
+    assert _gaps(old, _doc(LICENCE, 400, added=1)) == ("GOOD", [])
+
+
+def test_a_pending_renewal_leaves_the_old_licence_expiring() -> None:
+    old, renewal = _doc(LICENCE, 20), _doc(LICENCE, 400, PENDING, added=1)
+    # The renewal is a gap of its own until it's verified.
+    assert _gaps(old, renewal) == (
+        "WATCH",
+        [("expiring", str(old.id)), ("pending", str(renewal.id))],
+    )
+
+
+def test_a_rejected_upload_due_soon_adds_no_expiring_gap() -> None:
+    rejected = _doc(LICENCE, 3, REJECTED, added=1)
+    # Its rejection is the only gap, with or without a dated, verified licence on file.
+    assert _gaps(_doc(LICENCE, 400), rejected) == ("GOOD", [("rejected", str(rejected.id))])
+    assert _gaps(rejected) == ("GOOD", [("rejected", str(rejected.id))])
+
+
+def test_only_the_licence_and_certificate_in_force_can_expire() -> None:
+    licence, certificate = _doc(LICENCE, 5), _doc(CERTIFICATE, 50)
+    # Other types have no validity period here, even if the KYB check read a date off one.
+    others = [_doc(DocumentType.BANK_STATEMENT, 2), _doc(DocumentType.UBO_DECLARATION, 10)]
+    assert _gaps(licence, certificate, *others) == (
+        "WATCH",
+        [("expiring", str(licence.id)), ("expiring", str(certificate.id))],
+    )
 
 
 def test_product_ideas_follow_the_metrics() -> None:
