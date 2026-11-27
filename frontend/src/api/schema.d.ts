@@ -11,7 +11,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Accounts */
+        /**
+         * List Accounts
+         * @description Accounts the user may see, in the order most useful to their role.
+         */
         get: operations["list_accounts"];
         put?: never;
         post?: never;
@@ -184,7 +187,8 @@ export interface paths {
         };
         /**
          * Stream Run
-         * @description Server-Sent Events: trace events as they're written, then the final status.
+         * @description Server-Sent Events: trace events as they're written, then the final status. Ends with an
+         *     `error` event instead if you lose access to the run meanwhile.
          */
         get: operations["stream_run"];
         put?: never;
@@ -246,7 +250,8 @@ export interface paths {
         put?: never;
         /**
          * Start Ews Scan
-         * @description Scan the whole portfolio. Each company with new signals gets its own review and approval.
+         * @description Scan the accounts the user may see. Each company with new signals gets its own review and
+         *     approval.
          */
         post: operations["start_ews_scan"];
         delete?: never;
@@ -659,7 +664,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Tasks */
+        /**
+         * List Tasks
+         * @description `mine` (the default): tasks assigned to you on accounts you may see and, for an RM, the
+         *     tasks on their accounts that have no assignee or whose assignee was an RM who no longer has
+         *     the account. Otherwise every task you may see.
+         */
         get: operations["list_tasks"];
         put?: never;
         /** Create Task */
@@ -683,7 +693,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update Task */
+        /**
+         * Update Task
+         * @description For the assignee while they may see the account, an admin, or the account's RM if the task
+         *     has no assignee or its assignee was an RM who no longer has the account.
+         */
         patch: operations["update_task"];
         trace?: never;
     };
@@ -751,6 +765,8 @@ export interface components {
             kyb_status: components["schemas"]["KybStatus"];
             /** Legal Name */
             legal_name: string;
+            /** Next Doc Expiry */
+            next_doc_expiry?: string | null;
             /** Open Ews */
             open_ews: number;
             /** Risk Rating */
@@ -1608,7 +1624,6 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string | null;
-                mine?: boolean;
             };
             header?: never;
             path?: never;

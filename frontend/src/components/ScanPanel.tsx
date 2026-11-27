@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAgentRun, useRunStream } from '@/api/agents'
 import { useChildRuns, useStartScan } from '@/api/risk'
+import { useMe } from '@/auth'
 import { TraceTimeline } from '@/components/InspectionDrawer'
 import { Badge, Card } from '@/components/ui'
 import { RUN_TONE } from '@/lib/agents'
@@ -12,6 +13,7 @@ import { titleCase } from '@/lib/format'
 /** "Run portfolio scan" with live progress: the rules pass, then one review per flagged company. */
 export function ScanPanel({ compact = false }: { compact?: boolean }) {
   const qc = useQueryClient()
+  const wholeBank = useMe().data?.role !== 'RM'
   const start = useStartScan()
   const [runId, setRunId] = useState<string | null>(null)
   const { events, status } = useRunStream(runId)
@@ -37,7 +39,7 @@ export function ScanPanel({ compact = false }: { compact?: boolean }) {
           </h2>
           {!compact && (
             <p className="text-xs text-slate-500">
-              Fixed rules check every account. Each company with a new alert gets its own agent review, which waits for your approval.
+              Fixed rules check {wholeBank ? 'every account in the bank' : 'your accounts'}. Each company with a new alert gets its own agent review, which waits for approval.
             </p>
           )}
         </div>
@@ -64,7 +66,7 @@ export function ScanPanel({ compact = false }: { compact?: boolean }) {
           {status === 'FAILED' && <Badge tone="bad">Scan failed</Badge>}
           {parentDone && result && (
             <p className="text-sm text-slate-700">
-              {result.signals_found} alert{result.signals_found === 1 ? '' : 's'} across the portfolio, {result.new_signals} new.
+              {result.signals_found} alert{result.signals_found === 1 ? '' : 's'} across {wholeBank ? 'the bank' : 'your accounts'}, {result.new_signals} new.
               {result.new_signals === 0 && ' Nothing new to review.'}
             </p>
           )}

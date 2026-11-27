@@ -26,11 +26,11 @@ async def test_accounts_need_sign_in(client: AsyncClient) -> None:
 
 
 async def test_accounts_list(client: AsyncClient) -> None:
-    await login(client, "rm@demo.local")
+    await login(client, "credit@demo.local")
     rows = (await client.get("/api/accounts")).json()
     assert len(rows) == 15
     first = rows[0]
-    assert first["rm_name"] == "Layla Rahman"
+    assert {r["rm_name"] for r in rows} == {"Layla Rahman", "Yusuf Darwish"}
     assert float(first["total_limit"]) > 0
     assert {r["currency"] for r in rows} == {"BHD", "SAR", "AED", "KWD", "OMR", "QAR"}
 

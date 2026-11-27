@@ -36,7 +36,14 @@ async def test_tampered_token_is_rejected(client: AsyncClient) -> None:
 
 async def test_dev_persona_switch(client: AsyncClient) -> None:
     personas = (await client.get("/api/auth/personas")).json()
-    assert {p["role"] for p in personas} == {"RM", "CREDIT_OFFICER", "COMPLIANCE", "ADMIN"}
+    # By role, then name, so Layla, the RM the README tour follows, comes before Yusuf.
+    assert [(p["role"], p["full_name"]) for p in personas] == [
+        ("ADMIN", "Demo Admin"),
+        ("COMPLIANCE", "Noura Saleh"),
+        ("CREDIT_OFFICER", "Omar Faris"),
+        ("RM", "Layla Rahman"),
+        ("RM", "Yusuf Darwish"),
+    ]
     credit = next(p for p in personas if p["role"] == "CREDIT_OFFICER")
     r = await client.post("/api/auth/dev-switch", json={"user_id": credit["id"]})
     assert r.status_code == 200

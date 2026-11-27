@@ -33,6 +33,7 @@ from app.models import AgentRun, Company, Contact, EarlyWarningSignal, User
 from app.models.base import utcnow
 from app.models.enums import ActionType, EwsStatus, EwsTrigger, Severity
 from app.services import audit
+from app.services.access import can_see
 from app.services.ews_rules import evaluate, load_inputs, worst
 
 SCAN = "ews_scan"
@@ -65,6 +66,10 @@ async def scan_portfolio(state: ScanState) -> ScanState:
     today = utcnow().date()
     async with get_sessionmaker()() as session:
         inputs = await load_inputs(session)
+        # A scan covers what its starter may see. Cron scans have no user and cover the bank.
+        starter = await session.get(User, ctx.user_id) if ctx.user_id else None
+    if starter is not None:
+        inputs = [i for i in inputs if can_see(starter, i.company)]
     findings: dict[str, list[dict[str, Any]]] = {}
     for inp in inputs:
         found = evaluate(inp, s, today)

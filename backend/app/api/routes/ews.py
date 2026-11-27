@@ -14,6 +14,7 @@ from app.models.enums import EwsStatus, Role, Severity
 from app.schemas.agents import AgentRunSummary
 from app.schemas.crm import EwsListItem, EwsUpdate
 from app.services import audit
+from app.services.access import visible_accounts
 
 router = APIRouter(tags=["risk"])
 
@@ -44,11 +45,15 @@ def _query() -> Any:
 @router.get("/api/ews", response_model=list[EwsListItem])
 async def list_signals(
     session: SessionDep,
-    _: CurrentUser,
+    user: CurrentUser,
     state: str = Query(default="open", pattern="^(open|resolved|all)$"),
 ) -> list[EwsListItem]:
     """Signals ranked by severity, then newest first. `open` includes ones being investigated."""
-    stmt = _query().order_by(_SEVERITY_RANK, EarlyWarningSignal.detected_at.desc())
+    stmt = (
+        _query()
+        .where(visible_accounts(user))
+        .order_by(_SEVERITY_RANK, EarlyWarningSignal.detected_at.desc())
+    )
     if state == "open":
         stmt = stmt.where(EarlyWarningSignal.status != EwsStatus.RESOLVED)
     elif state == "resolved":
@@ -63,8 +68,14 @@ async def update_signal(
     session: SessionDep,
     user: Annotated[User, Depends(require_roles(Role.RM, Role.CREDIT_OFFICER))],
 ) -> EwsListItem:
+    # Access is part of the locking query, so another RM's signal is never locked.
     sig = await session.scalar(
-        select(EarlyWarningSignal).where(EarlyWarningSignal.id == signal_id).with_for_update()
+        select(EarlyWarningSignal)
+        .where(
+            EarlyWarningSignal.id == signal_id,
+            visible_accounts(user, EarlyWarningSignal.company_id),
+        )
+        .with_for_update()
     )
     if sig is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such signal")
@@ -101,7 +112,8 @@ async def start_ews_scan(
     session: SessionDep,
     user: Annotated[User, Depends(require_roles(Role.RM, Role.CREDIT_OFFICER))],
 ) -> AgentRunSummary:
-    """Scan the whole portfolio. Each company with new signals gets its own review and approval."""
+    """Scan the accounts the user may see. Each company with new signals gets its own review and
+    approval."""
     run = await ews_graph.start_scan(session, user.id)
     await session.commit()
     background.add_task(ews_graph.drive_scan, run.id)

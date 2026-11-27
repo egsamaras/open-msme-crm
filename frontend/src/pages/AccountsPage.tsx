@@ -1,12 +1,33 @@
 import { Search } from 'lucide-react'
 import { useDeferredValue, useState } from 'react'
 import { Link } from 'react-router'
-import type { AccountListItem } from '@/api/client'
+import type { AccountListItem, Role } from '@/api/client'
+import { useMe } from '@/auth'
 import { Badge, Card, EmptyState, ErrorState, Loading, PageHeader } from '@/components/ui'
-import { formatMoney, formatPct, percentOf, titleCase } from '@/lib/format'
+import { daysUntil, expiryLabel, formatDate, formatMoney, formatPct, percentOf, titleCase } from '@/lib/format'
 import { useAccounts } from './accounts'
 
 const KYB_TONE = { VERIFIED: 'good', PENDING_RENEWAL: 'warn', FLAGGED: 'bad' } as const
+
+const DESCRIPTION: Record<Role, string> = {
+  RM: 'The accounts assigned to you.',
+  CREDIT_OFFICER: 'Every account in the bank, most alerts and highest risk first.',
+  COMPLIANCE: 'Every account in the bank, KYB issues first, then the soonest trade licence or CR certificate expiry.',
+  ADMIN: 'Every account in the bank.',
+}
+
+function Expiry({ date }: { date: string | null | undefined }) {
+  if (!date) return <span className="text-slate-400">—</span>
+  const days = daysUntil(date)
+  if (days > 30) return <span className="whitespace-nowrap">{formatDate(date)}</span>
+  // The state is in words as well as colour, the same words as on the account's Documents tab.
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="whitespace-nowrap">{formatDate(date)}</span>
+      <Badge tone={days < 0 ? 'bad' : 'warn'}>{expiryLabel(days)}</Badge>
+    </div>
+  )
+}
 
 function UtilisationBar({ row }: { row: AccountListItem }) {
   const pct = percentOf(row.total_utilized, row.total_limit)
@@ -25,12 +46,17 @@ export function AccountsPage() {
   const [q, setQ] = useState('')
   const deferred = useDeferredValue(q.trim())
   const accounts = useAccounts(deferred)
+  const role = useMe().data?.role ?? 'RM'
+  const wholeBank = role !== 'RM'
+  const compliance = role === 'COMPLIANCE'
+  const n = accounts.data?.length ?? 0
+  const count = accounts.data && !deferred ? ` ${n} ${n === 1 ? 'account' : 'accounts'}.` : ''
 
   return (
     <>
       <PageHeader
         title="Accounts"
-        description="Your MSME portfolio. Amounts are in each client's own currency."
+        description={`${DESCRIPTION[role]}${count} Amounts are in each client's own currency.`}
         actions={
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-slate-400" aria-hidden />
@@ -51,7 +77,11 @@ export function AccountsPage() {
         ) : accounts.isError ? (
           <ErrorState error={accounts.error} onRetry={() => void accounts.refetch()} />
         ) : accounts.data.length === 0 ? (
-          <EmptyState title="No accounts match">Try a different name or CR number.</EmptyState>
+          deferred ? (
+            <EmptyState title="No accounts match">Try a different name or CR number.</EmptyState>
+          ) : (
+            <EmptyState title={wholeBank ? 'No accounts yet' : 'No accounts are assigned to you yet'} />
+          )
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -60,10 +90,11 @@ export function AccountsPage() {
                   <th className="px-3 py-3 font-medium">Company</th>
                   <th className="hidden px-3 py-3 font-medium lg:table-cell">Segment</th>
                   <th className="px-3 py-3 text-right font-medium">Total limits</th>
-                  <th className="px-3 py-3 font-medium">Utilisation</th>
+                  {compliance ? <th className="px-3 py-3 font-medium">Next expiry</th> : <th className="px-3 py-3 font-medium">Utilisation</th>}
                   <th className="px-3 py-3 font-medium">Risk</th>
                   <th className="px-3 py-3 font-medium">KYB</th>
                   <th className="px-3 py-3 font-medium">Alerts</th>
+                  {wholeBank && <th className="px-3 py-3 font-medium">RM</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -85,7 +116,7 @@ export function AccountsPage() {
                       {formatMoney(a.total_limit, a.currency)}
                     </td>
                     <td className="px-3 py-3">
-                      <UtilisationBar row={a} />
+                      {compliance ? <Expiry date={a.next_doc_expiry} /> : <UtilisationBar row={a} />}
                     </td>
                     <td className="px-3 py-3 tabular-nums">{a.risk_rating}/10</td>
                     <td className="px-3 py-3">
@@ -94,6 +125,7 @@ export function AccountsPage() {
                     <td className="px-3 py-3">
                       {a.open_ews > 0 ? <Badge tone="bad">{a.open_ews} open</Badge> : <span className="text-slate-400">—</span>}
                     </td>
+                    {wholeBank && <td className="whitespace-nowrap px-3 py-3">{a.rm_name ?? '—'}</td>}
                   </tr>
                 ))}
               </tbody>

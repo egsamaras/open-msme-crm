@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.seed import sid
 from app.models import AuditEvent, Deal, FinancialSnapshot, Task
-from app.models.enums import DealStage, PeriodType
+from app.models.enums import DealStage, PeriodType, Product
 from app.services import audit
 from app.services import financial_math as fm
 from tests.conftest import login
@@ -39,9 +39,25 @@ async def test_only_rms_start_memos_and_only_for_deals_in_underwriting(
     client: AsyncClient, session: AsyncSession
 ) -> None:
     assert (await _start(client, GULF_SPICE_DEAL, "compliance@demo.local")).status_code == 403
-    lead = await session.scalar(select(Deal.id).where(Deal.stage == DealStage.LEAD))
-    r = await _start(client, lead)  # type: ignore[arg-type]
-    assert r.status_code == 409 and "underwriting" in r.json()["detail"]
+    # Its own LEAD deal on one of Layla's accounts, so no other test's moves matter.
+    lead = Deal(
+        id=uuid.uuid4(),
+        company_id=sid("company", "pearl-bay"),
+        owner_id=sid("user", "rm"),
+        title="Memo stage check",
+        product=Product.TERM_LOAN,
+        stage=DealStage.LEAD,
+        requested_amount=Decimal("1000.00"),
+        probability_pct=10,
+    )
+    session.add(lead)
+    await session.commit()
+    try:
+        r = await _start(client, lead.id)
+        assert r.status_code == 409 and "underwriting" in r.json()["detail"]
+    finally:
+        await session.delete(lead)
+        await session.commit()
     assert (await _start(client, uuid.uuid4())).status_code == 404
 
 

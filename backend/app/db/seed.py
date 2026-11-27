@@ -85,6 +85,7 @@ class SeedUser:
 
 USERS = [
     SeedUser("rm", "rm@demo.local", "Layla Rahman", Role.RM, "Manama Business Centre"),
+    SeedUser("rm2", "rm2@demo.local", "Yusuf Darwish", Role.RM, "Riffa Business Centre"),
     SeedUser("credit", "credit@demo.local", "Omar Faris", Role.CREDIT_OFFICER, "Head Office"),
     SeedUser("compliance", "compliance@demo.local", "Noura Saleh", Role.COMPLIANCE, "Head Office"),
     SeedUser("admin", "admin@demo.local", "Demo Admin", Role.ADMIN, "Head Office"),
@@ -299,9 +300,10 @@ def build(today: date, password_hash: str) -> list[Base]:
         for u in USERS
     }
     rows.extend(users.values())
-    rm = users["rm"]
 
     for idx, c in enumerate(COMPANIES):
+        # Layla runs the first eight accounts (with every planted anomaly), Yusuf the rest.
+        rm = users["rm"] if idx < 8 else users["rm2"]
         rng = random.Random(c.key)  # stable per company
         ccy = COUNTRY_CCY[c.country]
         fx = FX_PER_USD[ccy]

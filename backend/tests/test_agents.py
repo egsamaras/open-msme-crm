@@ -1,5 +1,6 @@
 """Phase 3: agent runtime, approvals, four-eyes, citations, idempotency, streaming."""
 
+import asyncio
 import uuid
 from typing import Any
 
@@ -125,6 +126,26 @@ async def test_resolving_twice_is_a_conflict(client: AsyncClient) -> None:
     body = {"decision": "APPROVE"}
     assert (await client.post(f"/api/approvals/{item['id']}/resolve", json=body)).status_code == 200
     assert (await client.post(f"/api/approvals/{item['id']}/resolve", json=body)).status_code == 409
+
+
+async def test_resolving_twice_at_once_is_still_a_conflict(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The item is locked while it is resolved, so the second request waits, then finds it done."""
+    run = await _start_demo(client)
+    item = await _pending_for(client, run["id"])
+    record = audit.record
+
+    async def slow_record(*args: Any, **kwargs: Any) -> Any:
+        # Without the lock, both requests would be past the status check by now.
+        await asyncio.sleep(0.3)
+        return await record(*args, **kwargs)
+
+    monkeypatch.setattr(audit, "record", slow_record)
+    url = f"/api/approvals/{item['id']}/resolve"
+    body = {"decision": "REJECT", "note": "Already arranged"}
+    answers = await asyncio.gather(client.post(url, json=body), client.post(url, json=body))
+    assert sorted(r.status_code for r in answers) == [200, 409]
 
 
 async def test_wrong_role_and_bad_edits_are_refused(client: AsyncClient) -> None:

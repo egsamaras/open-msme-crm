@@ -45,9 +45,10 @@ function buildRouter(user: User) {
 }
 
 function SignedIn({ user }: { user: User }) {
-  // Rebuild routes when the persona changes, so role-specific pages update.
+  // Rebuild routes when the persona changes, so role-specific pages update. The key remounts the
+  // pages, so none of the previous persona's rows, counts or scan steps stay while new data loads.
   const router = useMemo(() => buildRouter(user), [user])
-  return <RouterProvider router={router} />
+  return <RouterProvider key={user.id} router={router} />
 }
 
 export default function App() {

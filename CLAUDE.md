@@ -61,6 +61,16 @@ accessibility regression too.
 - **No real outbound messages.** Approved emails go to the outbox as `SIMULATED`.
 - **Audit events are append-only** (a database trigger blocks UPDATE/DELETE). Write them through
   `app/services/audit.py`, which maintains the hash chain.
+- **Account access** goes through `app/services/access.py`: `account_or_404` for one record,
+  `visible_accounts` / `visible_runs` in queries. Every new route that exposes account data needs
+  one; `tests/test_access.py` fails until each method on a path with an id in it is listed there as
+  reviewed (it reads the OpenAPI schema, so it can't see ids in a query or body, or routes hidden
+  from the schema). The account's RM may edit all its deals and work its tasks that have no
+  assignee or whose assignee was an RM who no longer has the account (`passes_to_rm`); only the
+  assignee or an admin may update any other task, even an inactive assignee's. A task from an
+  approved `CREATE_TASK` goes only to someone who can hold the account (`can_hold`); the
+  escalation's call task and the KYB follow-up go to the account's RM, credit tasks to the
+  reviewer.
 - **RBAC on the server** via `Depends(require_roles(...))`. Frontend role checks are cosmetic only.
 - **Mock mode (`LLM_PROVIDER=mock`) runs the real graphs**, checkpointer and interrupts; only the LLM
   call is faked. Tests always use mock mode. Every LLM task needs a `@mock_handler` in its graph module.

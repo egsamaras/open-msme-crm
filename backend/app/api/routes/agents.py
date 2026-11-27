@@ -11,7 +11,7 @@ from sqlalchemy.orm import aliased
 from sse_starlette.sse import EventSourceResponse
 
 from app.agents import runtime
-from app.agents.actions import LOCKED_FIELDS, payload_schema
+from app.agents.actions import edit_error, payload_schema
 from app.api.deps import CurrentUser, SessionDep, require_roles
 from app.core.config import get_settings
 from app.db.session import get_sessionmaker
@@ -27,6 +27,7 @@ from app.schemas.agents import (
     ResolveIn,
 )
 from app.services import audit
+from app.services.access import account_or_404, visible_runs
 from app.services.approvals import is_four_eyes, required_roles, review_blocker
 from app.services.records import describe_records
 
@@ -102,7 +103,11 @@ def _approval_out(row: Any, user: User) -> ApprovalOut:
 
 
 async def _load_approval(session: SessionDep, approval_id: uuid.UUID, user: User) -> ApprovalOut:
-    row = (await session.execute(_approvals_query().where(ApprovalItem.id == approval_id))).first()
+    row = (
+        await session.execute(
+            _approvals_query().where(ApprovalItem.id == approval_id, visible_runs(user))
+        )
+    ).first()
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such approval item")
     return _approval_out(row, user)
@@ -118,7 +123,12 @@ async def list_approvals(
     state: str = Query(default="pending", pattern="^(pending|resolved|all)$"),
     limit: int = Query(default=100, ge=1, le=500),
 ) -> list[ApprovalOut]:
-    stmt = _approvals_query().order_by(ApprovalItem.created_at.desc()).limit(limit)
+    stmt = (
+        _approvals_query()
+        .where(visible_runs(user))
+        .order_by(ApprovalItem.created_at.desc())
+        .limit(limit)
+    )
     if state == "pending":
         stmt = stmt.where(ApprovalItem.status == ApprovalStatus.PENDING)
     elif state == "resolved":
@@ -131,7 +141,9 @@ async def list_approvals(
 async def count_approvals(session: SessionDep, user: CurrentUser) -> ApprovalCount:
     pending = list(
         await session.scalars(
-            select(ApprovalItem).where(ApprovalItem.status == ApprovalStatus.PENDING)
+            select(ApprovalItem)
+            .join(AgentRun, AgentRun.id == ApprovalItem.agent_run_id)
+            .where(ApprovalItem.status == ApprovalStatus.PENDING, visible_runs(user))
         )
     )
     return ApprovalCount(
@@ -153,7 +165,10 @@ async def resolve_approval(
 ) -> ApprovalOut:
     # Lock the row so two reviewers can't both resolve it.
     item = await session.scalar(
-        select(ApprovalItem).where(ApprovalItem.id == approval_id).with_for_update()
+        select(ApprovalItem)
+        .join(AgentRun, AgentRun.id == ApprovalItem.agent_run_id)
+        .where(ApprovalItem.id == approval_id, visible_runs(user))
+        .with_for_update(of=ApprovalItem)
     )
     if item is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such approval item")
@@ -179,13 +194,9 @@ async def resolve_approval(
                     f"Edited payload is not valid: {e.errors()[0]['msg']}",
                 ) from e
             edited_json = edited.model_dump(mode="json")
-            # The target and the evidence stay as proposed.
-            for locked in LOCKED_FIELDS[item.action_type]:
-                if edited_json.get(locked) != item.proposed_payload.get(locked):
-                    what = "the account" if locked == "company_id" else locked.replace("_", " ")
-                    raise HTTPException(
-                        status.HTTP_422_UNPROCESSABLE_CONTENT, f"You can't change {what}"
-                    )
+            error = await edit_error(session, item.action_type, item.proposed_payload, edited_json)
+            if error:
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, error)
             if edited_json != item.proposed_payload:
                 item.edited_payload = edited_json
                 final = edited_json
@@ -213,7 +224,10 @@ async def resolve_approval(
 
     await runtime.resume(run_id, decision=new_status.value, payload=final, reviewer_id=user.id)
     session.expire_all()
-    return await _load_approval(session, approval_id, user)
+    await session.refresh(user)
+    # Access was checked under the row lock; the answer stands even if the account moved since.
+    row = (await session.execute(_approvals_query().where(ApprovalItem.id == approval_id))).one()
+    return _approval_out(row, user)
 
 
 # ---------- agent runs ----------
@@ -222,7 +236,7 @@ async def resolve_approval(
 @router.get("/api/agent-runs", response_model=list[AgentRunSummary])
 async def list_runs(
     session: SessionDep,
-    _: CurrentUser,
+    user: CurrentUser,
     company_id: uuid.UUID | None = None,
     parent_run_id: uuid.UUID | None = None,
     agent_name: str | None = None,
@@ -232,6 +246,7 @@ async def list_runs(
         select(AgentRun, Company.trading_name, Trigger.full_name)
         .outerjoin(Company, Company.id == AgentRun.company_id)
         .outerjoin(Trigger, Trigger.id == AgentRun.triggered_by_id)
+        .where(visible_runs(user))
         .order_by(AgentRun.created_at.desc())
         .limit(limit)
     )
@@ -245,19 +260,25 @@ async def list_runs(
 
 
 @router.get("/api/agent-runs/{run_id}", response_model=AgentRunDetail)
-async def get_run(run_id: uuid.UUID, session: SessionDep, _: CurrentUser) -> AgentRunDetail:
+async def get_run(run_id: uuid.UUID, session: SessionDep, user: CurrentUser) -> AgentRunDetail:
     row = (
         await session.execute(
             select(AgentRun, Company.trading_name, Trigger.full_name)
             .outerjoin(Company, Company.id == AgentRun.company_id)
             .outerjoin(Trigger, Trigger.id == AgentRun.triggered_by_id)
-            .where(AgentRun.id == run_id)
+            .where(AgentRun.id == run_id, visible_runs(user))
         )
     ).first()
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such agent run")
     run, company_name, trigger = row
-    cited = {uuid.UUID(c) for e in run.trace if e.get("type") == "llm" for c in e.get("cited", [])}
+    # Only citations the check accepted: a rejected id may name a record of another account.
+    cited = {
+        uuid.UUID(c)
+        for e in run.trace
+        if e.get("type") == "llm"
+        for c in set(e.get("cited", [])) - set(e.get("rejected_citations", []))
+    }
     approval_ids = list(
         await session.scalars(select(ApprovalItem.id).where(ApprovalItem.agent_run_id == run.id))
     )
@@ -271,15 +292,30 @@ async def get_run(run_id: uuid.UUID, session: SessionDep, _: CurrentUser) -> Age
 
 
 @router.get("/api/agent-runs/{run_id}/stream")
-async def stream_run(run_id: uuid.UUID, request: Request, _: CurrentUser) -> EventSourceResponse:
-    """Server-Sent Events: trace events as they're written, then the final status."""
+async def stream_run(
+    run_id: uuid.UUID, request: Request, session: SessionDep, user: CurrentUser
+) -> EventSourceResponse:
+    """Server-Sent Events: trace events as they're written, then the final status. Ends with an
+    `error` event instead if you lose access to the run meanwhile."""
+    visible = select(AgentRun.id).where(AgentRun.id == run_id, visible_runs(user))
+    if await session.scalar(visible) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such agent run")
+    user_id = user.id
+    await session.close()  # don't hold a connection for the life of the stream
     pause = {AgentRunStatus.AWAITING_APPROVAL, *runtime.TERMINAL}
 
     async def events() -> AsyncIterator[dict[str, str]]:
         sent = 0
         for _ in range(600):  # stop after ~5 minutes regardless
             async with get_sessionmaker()() as s:
-                run = await s.get(AgentRun, run_id)
+                # Check access on every poll: the account may change hands, or the user be
+                # deactivated, while the stream is open.
+                viewer = await s.get(User, user_id)
+                run: AgentRun | None = None
+                if viewer is not None and viewer.is_active:
+                    run = await s.scalar(
+                        select(AgentRun).where(AgentRun.id == run_id, visible_runs(viewer))
+                    )
             if run is None:
                 yield {"event": "error", "data": json.dumps({"detail": "No such agent run"})}
                 return
@@ -313,9 +349,7 @@ async def start_demo_followup(
     """Development only: run the demo agent, which proposes one follow-up task for approval."""
     if not get_settings().is_dev:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
-    company = await session.get(Company, company_id)
-    if company is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such account")
+    company = await account_or_404(session, company_id, user)
     run = await runtime.create_run(
         session, agent_name="demo_followup", user_id=user.id, company_id=company_id
     )

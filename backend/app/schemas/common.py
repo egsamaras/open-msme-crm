@@ -57,6 +57,7 @@ class AccountListItem(OrmModel):
     total_limit: Decimal
     total_utilized: Decimal
     open_ews: int
+    next_doc_expiry: date | None = None
 
 
 class AuditChainOut(BaseModel):

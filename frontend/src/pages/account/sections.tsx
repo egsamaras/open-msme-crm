@@ -35,6 +35,7 @@ import { Badge, Card, EmptyState, ErrorState, Loading } from '@/components/ui'
 import {
   daysUntil,
   DOC_LABEL,
+  expiryLabel,
   formatDate,
   formatDayMonth,
   formatMoney,
@@ -345,8 +346,7 @@ export function DocumentsTab({ account }: Props) {
                           </div>
                         </div>
                         <div className="flex gap-1">
-                          {days !== null && days < 0 && <Badge tone="bad">Expired</Badge>}
-                          {days !== null && days >= 0 && days <= 30 && <Badge tone="warn">{days} days left</Badge>}
+                          {days !== null && days <= 30 && <Badge tone={days < 0 ? 'bad' : 'warn'}>{expiryLabel(days)}</Badge>}
                           <Badge tone={d.verification_status === 'VERIFIED' ? 'good' : d.verification_status === 'REJECTED' ? 'bad' : 'warn'}>
                             {titleCase(d.verification_status)}
                           </Badge>
@@ -476,7 +476,7 @@ export function EwsTab({ account }: Props) {
         {() =>
           ews.data!.length === 0 ? (
             <EmptyState title="No early-warning alerts">
-              <p>Alerts appear here after a portfolio scan (Phase 4).</p>
+              <p>Alerts appear here after a portfolio scan.</p>
             </EmptyState>
           ) : (
             <ul className="divide-y divide-slate-100 text-sm">
