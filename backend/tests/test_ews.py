@@ -1,7 +1,7 @@
 """Phase 4, graph 3: early-warning rules, the portfolio scan, per-company reviews, Risk radar."""
 
 import uuid
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal as D
 from types import SimpleNamespace
 from typing import Any, cast
@@ -18,16 +18,19 @@ from app.db.session import get_sessionmaker
 from app.models import (
     AgentRun,
     ApprovalItem,
+    Document,
     EarlyWarningSignal,
     OutboxMessage,
     Task,
 )
+from app.models.base import utcnow
 from app.models.enums import (
     DocumentType,
     EwsStatus,
     EwsTrigger,
     Product,
     Severity,
+    VerificationStatus,
 )
 from app.services import audit
 from app.services import ews_rules as rules
@@ -69,6 +72,31 @@ def _inputs(**kw: Any) -> rules.CompanyInputs:
         utilization=kw.get("utilization", {}),
         documents=kw.get("documents", []),
     )
+
+
+LICENCE, CERTIFICATE = DocumentType.TRADE_LICENSE, DocumentType.CR_CERTIFICATE
+
+
+def _doc(
+    doc_type: DocumentType,
+    days: int | None,
+    state: VerificationStatus = VerificationStatus.VERIFIED,
+    added: int = 0,
+) -> Any:
+    """A document expiring `days` after TODAY (None: undated), added `added` hours after others."""
+    return SimpleNamespace(
+        id=uuid.uuid4(),
+        doc_type=doc_type,
+        expiry_date=None if days is None else TODAY + timedelta(days=days),
+        verification_status=state,
+        created_at=datetime(2026, 1, 1, tzinfo=UTC) + timedelta(hours=added),
+    )
+
+
+def _expiry_alerts(*docs: Any) -> list[tuple[uuid.UUID, int]]:
+    """The cited document and days left of each expiry the rule finds."""
+    found = rules.doc_expiries(_inputs(documents=list(docs)), S, TODAY)
+    return [(f.source_record_ids[0], f.metrics["days_left"]) for f in found]
 
 
 @pytest.mark.parametrize(
@@ -119,9 +147,7 @@ def test_utilization_needs_every_weekly_point_above_the_line_for_30_days() -> No
 
 
 def test_doc_expiry_bounced_cheques_and_covenants() -> None:
-    doc = SimpleNamespace(
-        id=uuid.uuid4(), doc_type=DocumentType.TRADE_LICENSE, expiry_date=TODAY + timedelta(days=5)
-    )
+    doc = _doc(LICENCE, 5)
     [exp] = rules.doc_expiries(_inputs(documents=[doc]), S, TODAY)
     assert exp.severity == Severity.HIGH and exp.metrics["days_left"] == 5
     doc.expiry_date = TODAY + timedelta(days=31)
@@ -145,6 +171,45 @@ def test_doc_expiry_bounced_cheques_and_covenants() -> None:
         rules.covenant_breaches(_inputs(snapshots=[_snap("1", ebitda="80")], facilities=[fac]), S)
         == []
     )
+
+
+# Only the document in force can expire, as on the Accounts list: for each type, the verified
+# document that expires last.
+
+
+def test_a_verified_renewal_stops_the_expiry_alert() -> None:
+    old = _doc(LICENCE, 18)
+    assert _expiry_alerts(old) == [(old.id, 18)]
+    assert _expiry_alerts(old, _doc(LICENCE, 400, added=1)) == []
+
+
+def test_a_pending_renewal_leaves_the_old_licence_alerting() -> None:
+    old = _doc(LICENCE, 18)
+    pending = _doc(LICENCE, 400, VerificationStatus.PENDING, added=1)
+    assert _expiry_alerts(old, pending) == [(old.id, 18)]
+
+
+def test_a_rejected_upload_is_ignored() -> None:
+    old, renewed = _doc(LICENCE, 18), _doc(LICENCE, 400)
+    # A rejected renewal doesn't stop the alert, and a rejected upload due sooner doesn't raise one.
+    rejected = VerificationStatus.REJECTED
+    assert _expiry_alerts(old, _doc(LICENCE, 400, rejected, added=1)) == [(old.id, 18)]
+    assert _expiry_alerts(renewed, _doc(LICENCE, 3, rejected, added=1)) == []
+
+
+def test_each_type_has_one_document_in_force() -> None:
+    licence, certificate = _doc(LICENCE, 5), _doc(CERTIFICATE, 20)
+    # Other types and undated copies don't count.
+    others = [_doc(DocumentType.BANK_STATEMENT, 2), _doc(LICENCE, None, added=1)]
+    found = rules.doc_expiries(_inputs(documents=[licence, certificate, *others]), S, TODAY)
+    assert [(f.metrics["document_type"], f.severity) for f in found] == [
+        ("CR_CERTIFICATE", Severity.MEDIUM),
+        ("TRADE_LICENSE", Severity.HIGH),
+    ]
+    # Of two copies with the same date, the first one added stays in force whatever order they
+    # load in, so uploading a copy doesn't raise a second alert.
+    copy = _doc(LICENCE, 5, added=1)
+    assert _expiry_alerts(licence, copy) == _expiry_alerts(copy, licence) == [(licence.id, 5)]
 
 
 # ---------- the scan, end to end ----------
@@ -261,6 +326,64 @@ async def test_cron_and_admin_scans_cover_the_bank_and_an_rms_scan_only_theirs(
     # A scan belongs to whoever started it, so no RM can open the cron scan.
     await login(client, "rm@demo.local")
     assert (await client.get(f"/api/agent-runs/{cron.id}")).status_code == 404
+
+
+async def test_the_scan_follows_the_licence_in_force_without_a_second_alert(
+    client: AsyncClient, session: AsyncSession, scan: dict[str, Any]
+) -> None:
+    """Pearl Bay's licence expires in 18 days. A pending renewal and a rejected upload leave its
+    alert as it is; once the renewal is verified, the scan stops finding the expiry."""
+    today = utcnow().date()
+    licence = str(sid("doc", "pearl-bay", "licence"))
+
+    def upload(days: int, state: VerificationStatus) -> Document:
+        return Document(
+            id=uuid.uuid4(),
+            company_id=PEARL,
+            doc_type=DocumentType.TRADE_LICENSE,
+            file_name="pearl-bay-trade-licence-renewal.pdf",
+            expiry_date=today + timedelta(days=days),
+            verification_status=state,
+            extracted_fields={},
+        )
+
+    async def pearl_findings() -> list[str]:
+        """Scan the bank, which must raise nothing new, and return Pearl Bay's triggers."""
+        r = await client.post("/api/agents/ews-scan")
+        run = await _run(client, r.json()["id"])
+        assert run["status"] == "COMPLETED" and run["result"]["new_signals"] == 0
+        tool = next(e for e in run["trace"] if e.get("name") == "scan_portfolio")
+        return list(tool["output"].get(str(PEARL), []))
+
+    async def pearl_alerts() -> list[tuple[list[str], EwsStatus]]:
+        rows = await session.execute(
+            select(EarlyWarningSignal.metrics, EarlyWarningSignal.status).where(
+                EarlyWarningSignal.company_id == PEARL,
+                EarlyWarningSignal.trigger == EwsTrigger.DOC_EXPIRY,
+            )
+        )
+        return [(metrics["source_record_ids"], status) for metrics, status in rows.all()]
+
+    # A renewal waiting for verification, and a rejected upload that would expire sooner.
+    renewal = upload(400, VerificationStatus.PENDING)
+    rejected = upload(3, VerificationStatus.REJECTED)
+    session.add_all([renewal, rejected])
+    await session.commit()
+    try:
+        await login(client, "credit@demo.local")
+        # The old licence is still the one in force: its open alert is refreshed, not repeated.
+        assert await pearl_findings() == ["DOC_EXPIRY"]
+        assert await pearl_alerts() == [([licence], EwsStatus.OPEN)]
+
+        renewal.verification_status = VerificationStatus.VERIFIED
+        await session.commit()
+        assert await pearl_findings() == []
+        # The alert already open waits for someone to resolve it with a note, like any other.
+        assert await pearl_alerts() == [([licence], EwsStatus.OPEN)]
+    finally:
+        for row in (renewal, rejected):
+            await session.delete(row)
+        await session.commit()
 
 
 async def test_escalation_needs_a_credit_officer_then_opens_an_investigation(

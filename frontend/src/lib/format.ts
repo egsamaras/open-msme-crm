@@ -48,6 +48,11 @@ export function daysUntil(iso: string, today: Date = new Date()): number {
   return Math.round((Date.UTC(y!, m! - 1, d!) - start) / 86_400_000)
 }
 
+/** A number of days in words: "1 day", "18 days". */
+export function dayCount(days: number): string {
+  return `${days} ${days === 1 ? 'day' : 'days'}`
+}
+
 /**
  * A document's expiry in words, the same on the Accounts list and the account's Documents tab.
  * `days` comes from `daysUntil`.
@@ -55,7 +60,7 @@ export function daysUntil(iso: string, today: Date = new Date()): number {
 export function expiryLabel(days: number): string {
   if (days < 0) return 'Expired'
   if (days === 0) return 'Expires today'
-  return `${days} ${days === 1 ? 'day' : 'days'} left`
+  return `${dayCount(days)} left`
 }
 
 export const ROLE_LABEL: Record<string, string> = {

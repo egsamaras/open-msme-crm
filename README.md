@@ -47,7 +47,9 @@ or reject it, and every step is written to a tamper-evident audit trail.
    for 30+ days, bounced cheques, licence or CR expiring, covenant breaches) find the signals; each
    flagged company gets its own agent thread that explains the likely cause and drafts a follow-up.
    High or critical signals go to a credit officer as an escalation (four-eyes); others become a
-   simulated email or a call task for the RM. Also runs from cron.
+   simulated email or a call task for the RM. Also runs from cron. Expiry counts only the latest
+   verified licence and certificate, as the Accounts list does: a verified renewal stops the alert,
+   and pending or rejected uploads change nothing.
 4. **Credit memo drafting** — ratios, pro-forma DSCR with the new facility and an indicative
    scorecard grade come from code, benchmarks from a static table; the model drafts six cited
    sections. A credit officer who didn't start the run edits and approves it, which moves the deal

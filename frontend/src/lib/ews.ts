@@ -1,5 +1,5 @@
 import type { Signal } from '@/api/risk'
-import { DOC_LABEL, PRODUCT_LABEL, formatDate, formatMoney } from '@/lib/format'
+import { DOC_LABEL, PRODUCT_LABEL, dayCount, formatDate, formatMoney } from '@/lib/format'
 
 export const TRIGGER_LABEL: Record<string, string> = {
   CASHFLOW_DROP: 'Cash-flow drop',
@@ -14,6 +14,13 @@ export const SEVERITY_TONE = { CRITICAL: 'bad', HIGH: 'bad', MEDIUM: 'warn', LOW
 type Metrics = Record<string, unknown>
 const s = (m: Metrics, k: string) => String(m[k] ?? '')
 
+/** Days to an expiry in words, as `expiryLabel` counts them: "in 1 day", "today", "3 days ago". */
+function expiryWhen(days: number): string {
+  if (days < 0) return `${dayCount(-days)} ago`
+  if (days === 0) return 'today'
+  return `in ${dayCount(days)}`
+}
+
 /** The exact values that fired a signal, in words. */
 export function describeSignal(trigger: Signal['trigger'], m: Metrics): string {
   switch (trigger) {
@@ -27,7 +34,7 @@ export function describeSignal(trigger: Signal['trigger'], m: Metrics): string {
       return `${s(m, 'count')} bounced cheque(s) in the month to ${formatDate(s(m, 'period'))}`
     case 'DOC_EXPIRY': {
       const days = Number(m.days_left)
-      return `${DOC_LABEL[s(m, 'document_type')] ?? s(m, 'document_type')} ${days < 0 ? 'expired' : 'expires'} ${formatDate(s(m, 'expiry_date'))} (${days < 0 ? `${-days} days ago` : `in ${days} days`})`
+      return `${DOC_LABEL[s(m, 'document_type')] ?? s(m, 'document_type')} ${days < 0 ? 'expired' : 'expires'} ${formatDate(s(m, 'expiry_date'))} (${expiryWhen(days)})`
     }
     case 'COVENANT_BREACH':
       return `${s(m, 'metric')} ${s(m, 'actual')} vs covenant ${s(m, 'operator')} ${s(m, 'threshold')} on ${PRODUCT_LABEL[s(m, 'facility_product')] ?? s(m, 'facility_product')}`
