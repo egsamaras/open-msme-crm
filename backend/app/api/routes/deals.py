@@ -143,9 +143,8 @@ async def update_deal(
     deal = await session.get(Deal, deal_id)
     if deal is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such deal")
+    # An RM may edit every deal on their own accounts, including one a predecessor opened.
     await account_or_404(session, deal.company_id, user, "No such deal")
-    if user.role == Role.RM and deal.owner_id != user.id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "You can only edit your own deals")
 
     changes = body.model_dump(exclude_unset=True)
     if "stage" in changes and changes["stage"] != deal.stage:

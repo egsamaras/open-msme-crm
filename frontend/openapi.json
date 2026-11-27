@@ -3269,7 +3269,7 @@
     },
     "/api/agent-runs/{run_id}/stream": {
       "get": {
-        "description": "Server-Sent Events: trace events as they're written, then the final status.",
+        "description": "Server-Sent Events: trace events as they're written, then the final status. Ends with an\n`error` event instead if you lose access to the run meanwhile.",
         "operationId": "stream_run",
         "parameters": [
           {
@@ -3399,7 +3399,7 @@
     },
     "/api/agents/ews-scan": {
       "post": {
-        "description": "Scan the accounts the user may see. Each flagged company gets its own review.",
+        "description": "Scan the accounts the user may see. Each company with new signals gets its own review and\napproval.",
         "operationId": "start_ews_scan",
         "responses": {
           "202": {
@@ -4373,6 +4373,7 @@
     },
     "/api/tasks": {
       "get": {
+        "description": "`mine` (the default): tasks assigned to you on accounts you may see and, for an RM, the\ntasks on their accounts that have no assignee or whose assignee was an RM who no longer has\nthe account. Otherwise every task you may see.",
         "operationId": "list_tasks",
         "parameters": [
           {
@@ -4475,6 +4476,7 @@
     },
     "/api/tasks/{task_id}": {
       "patch": {
+        "description": "For the assignee while they may see the account, an admin, or the account's RM if the task\nhas no assignee or its assignee was an RM who no longer has the account.",
         "operationId": "update_task",
         "parameters": [
           {

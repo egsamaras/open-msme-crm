@@ -22,7 +22,14 @@ from app.models import (
     Interaction,
     User,
 )
-from app.models.enums import EwsStatus, KybStatus, PeriodType, Role, TaskStatus
+from app.models.enums import (
+    EwsStatus,
+    KybStatus,
+    PeriodType,
+    Role,
+    TaskStatus,
+    VerificationStatus,
+)
 from app.schemas.common import AccountListItem
 from app.schemas.crm import (
     AccountDetail,
@@ -41,6 +48,7 @@ from app.schemas.crm import (
 from app.services import audit
 from app.services import financial_math as fm
 from app.services.access import account_or_404, visible_accounts
+from app.services.ews_rules import EXPIRING_DOCS
 from app.services.tasks import query_tasks
 
 router = APIRouter(prefix="/api/accounts", tags=["accounts"])
@@ -68,9 +76,21 @@ async def list_accounts(
         .group_by(EarlyWarningSignal.company_id)
         .subquery()
     )
+    # Next expiry: for each type (trade licence, CR certificate), the latest expiry on a verified
+    # document, then the sooner of the two. Pending and rejected uploads and other types don't
+    # count.
+    in_force = (
+        select(Document.company_id, func.max(Document.expiry_date).label("expiry_date"))
+        .where(
+            Document.doc_type.in_(EXPIRING_DOCS),
+            Document.verification_status == VerificationStatus.VERIFIED,
+        )
+        .group_by(Document.company_id, Document.doc_type)
+        .subquery()
+    )
     expiry = (
-        select(Document.company_id, func.min(Document.expiry_date).label("next_expiry"))
-        .group_by(Document.company_id)
+        select(in_force.c.company_id, func.min(in_force.c.expiry_date).label("next_expiry"))
+        .group_by(in_force.c.company_id)
         .subquery()
     )
     order: list[Any] = [Company.legal_name]

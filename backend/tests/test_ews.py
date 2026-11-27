@@ -11,8 +11,10 @@ from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.graphs import ews as ews_graph
 from app.core.config import Settings
 from app.db.seed import sid
+from app.db.session import get_sessionmaker
 from app.models import (
     AgentRun,
     ApprovalItem,
@@ -235,6 +237,30 @@ async def test_scanning_again_creates_nothing_new(
     assert again["result"]["signals_found"] == 4 and again["result"]["new_signals"] == 0
     assert again["result"]["reviews"] == []
     assert await session.scalar(select(func.count()).select_from(EarlyWarningSignal)) == before
+
+
+def _companies_scanned(run: dict[str, Any]) -> int:
+    tool = next(e for e in run["trace"] if e.get("name") == "scan_portfolio")
+    return int(tool["input"]["companies"])
+
+
+async def test_cron_and_admin_scans_cover_the_bank_and_an_rms_scan_only_theirs(
+    client: AsyncClient, scan: dict[str, Any]
+) -> None:
+    assert _companies_scanned(scan) == 8  # the module's scan, run as Layla
+    async with get_sessionmaker()() as s:
+        cron = await ews_graph.start_scan(s, None)
+        await s.commit()
+    await ews_graph.drive_scan(cron.id)
+    await login(client, "admin@demo.local")
+    admin = (await client.post("/api/agents/ews-scan")).json()["id"]
+    for run_id in (str(cron.id), admin):
+        run = await _run(client, run_id)
+        assert run["status"] == "COMPLETED" and _companies_scanned(run) == 15
+        assert run["result"]["signals_found"] == 4 and run["result"]["new_signals"] == 0
+    # A scan belongs to whoever started it, so no RM can open the cron scan.
+    await login(client, "rm@demo.local")
+    assert (await client.get(f"/api/agent-runs/{cron.id}")).status_code == 404
 
 
 async def test_escalation_needs_a_credit_officer_then_opens_an_investigation(

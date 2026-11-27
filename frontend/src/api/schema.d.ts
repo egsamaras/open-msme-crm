@@ -187,7 +187,8 @@ export interface paths {
         };
         /**
          * Stream Run
-         * @description Server-Sent Events: trace events as they're written, then the final status.
+         * @description Server-Sent Events: trace events as they're written, then the final status. Ends with an
+         *     `error` event instead if you lose access to the run meanwhile.
          */
         get: operations["stream_run"];
         put?: never;
@@ -249,7 +250,8 @@ export interface paths {
         put?: never;
         /**
          * Start Ews Scan
-         * @description Scan the accounts the user may see. Each flagged company gets its own review.
+         * @description Scan the accounts the user may see. Each company with new signals gets its own review and
+         *     approval.
          */
         post: operations["start_ews_scan"];
         delete?: never;
@@ -662,7 +664,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Tasks */
+        /**
+         * List Tasks
+         * @description `mine` (the default): tasks assigned to you on accounts you may see and, for an RM, the
+         *     tasks on their accounts that have no assignee or whose assignee was an RM who no longer has
+         *     the account. Otherwise every task you may see.
+         */
         get: operations["list_tasks"];
         put?: never;
         /** Create Task */
@@ -686,7 +693,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update Task */
+        /**
+         * Update Task
+         * @description For the assignee while they may see the account, an admin, or the account's RM if the task
+         *     has no assignee or its assignee was an RM who no longer has the account.
+         */
         patch: operations["update_task"];
         trace?: never;
     };

@@ -62,7 +62,9 @@ async def personas(session: SessionDep) -> list[User]:
     """Development only: the seeded users the persona switcher can become."""
     if not get_settings().is_dev:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
-    rows = await session.scalars(select(User).where(User.is_active).order_by(User.role, User.email))
+    rows = await session.scalars(
+        select(User).where(User.is_active).order_by(User.role, User.full_name)
+    )
     return list(rows)
 
 

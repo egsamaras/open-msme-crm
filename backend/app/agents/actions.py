@@ -25,6 +25,7 @@ from app.models import (
     EarlyWarningSignal,
     OutboxMessage,
     Task,
+    User,
 )
 from app.models.enums import (
     ActionType,
@@ -37,6 +38,7 @@ from app.models.enums import (
     TaskStatus,
     VerificationStatus,
 )
+from app.services.access import can_hold
 
 _NS = uuid.UUID("0b8f3f0e-6b1c-4d3e-9a7f-2a1d5c9e8b47")
 
@@ -96,19 +98,29 @@ async def _apply_create_task(
     session: AsyncSession, approval: ApprovalItem, payload: BaseModel
 ) -> dict[str, Any]:
     p = CreateTaskPayload.model_validate(payload.model_dump())
+    company = await session.get(Company, p.company_id)
+    assert company is not None
+    # The first who can hold the account (active, and may see it): the named assignee, the
+    # account's RM, the person who started the run. A cron scan has no starter, and the account
+    # may have changed hands while the proposal waited. If none can, the task stays unassigned.
+    assignee_id = None
+    for candidate in (p.assignee_id, company.rm_id, approval.initiator_id):
+        if candidate and can_hold(await session.get(User, candidate), company):
+            assignee_id = candidate
+            break
     task_id = derived_id(approval, "task")
     await session.merge(
         Task(
             id=task_id,
             company_id=p.company_id,
-            assignee_id=p.assignee_id or approval.initiator_id,
+            assignee_id=assignee_id,
             title=p.title,
             due_date=p.due_date,
             status=TaskStatus.OPEN,
             source=TaskSource.AGENT,
         )
     )
-    return {"task_id": str(task_id)}
+    return {"task_id": str(task_id), "assignee_id": str(assignee_id) if assignee_id else None}
 
 
 async def _apply_send_email(
@@ -356,7 +368,7 @@ ACTIONS: dict[ActionType, tuple[type[BaseModel], Applier]] = {
 
 # Fields a reviewer may not change when editing: the evidence and the target stay as proposed.
 LOCKED_FIELDS: dict[ActionType, tuple[str, ...]] = {
-    ActionType.CREATE_TASK: ("company_id", "assignee_id"),
+    ActionType.CREATE_TASK: ("company_id",),
     ActionType.SEND_EMAIL: ("company_id",),
     ActionType.ESCALATE_EWS: ("company_id", "signal_ids"),
     ActionType.SUBMIT_CAM: ("company_id", "deal_id", "ratios", "assumptions"),
@@ -369,3 +381,21 @@ def payload_schema(action: ActionType) -> type[BaseModel]:
     if action not in ACTIONS:
         raise NotImplementedError(f"{action.value} has no applier yet")
     return ACTIONS[action][0]
+
+
+async def edit_error(
+    session: AsyncSession, action: ActionType, proposed: dict[str, Any], edited: dict[str, Any]
+) -> str | None:
+    """Why a reviewer's edited payload can't be used, or None if it can. Locked fields stay as
+    proposed; a task may go to any active user who can see the account (`can_hold`)."""
+    for locked in LOCKED_FIELDS[action]:
+        if edited.get(locked) != proposed.get(locked):
+            what = "the account" if locked == "company_id" else locked.replace("_", " ")
+            return f"You can't change {what}"
+    assignee = edited.get("assignee_id")
+    if action == ActionType.CREATE_TASK and assignee and assignee != proposed.get("assignee_id"):
+        company = await session.get(Company, uuid.UUID(edited["company_id"]))
+        holder = await session.get(User, uuid.UUID(assignee))
+        if company is None or not can_hold(holder, company):
+            return "No such assignee"
+    return None

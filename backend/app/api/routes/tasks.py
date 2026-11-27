@@ -4,11 +4,11 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from app.api.deps import CurrentUser, SessionDep
 from app.models import Deal, Task, User
-from app.models.enums import Role, TaskSource, TaskStatus
+from app.models.enums import TaskSource, TaskStatus
 from app.schemas.crm import TaskIn, TaskOut, TaskPatch
 from app.services import audit
-from app.services.access import account_or_404, can_see
-from app.services.tasks import query_tasks
+from app.services.access import account_or_404, can_hold
+from app.services.tasks import may_update, query_tasks
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -20,9 +20,10 @@ async def list_tasks(
     mine: bool = True,
     status_filter: TaskStatus | None = Query(default=None, alias="status"),
 ) -> list[TaskOut]:
-    return await query_tasks(
-        session, user, assignee_id=user.id if mine else None, status=status_filter
-    )
+    """`mine` (the default): tasks assigned to you on accounts you may see and, for an RM, the
+    tasks on their accounts that have no assignee or whose assignee was an RM who no longer has
+    the account. Otherwise every task you may see."""
+    return await query_tasks(session, user, mine=mine, status=status_filter)
 
 
 @router.post("", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
@@ -35,8 +36,7 @@ async def create_task(body: TaskIn, session: SessionDep, user: CurrentUser) -> T
                 status.HTTP_422_UNPROCESSABLE_CONTENT, "Deal is not on this account"
             )
     assignee_id = body.assignee_id or user.id
-    assignee = await session.get(User, assignee_id)
-    if assignee is None or not assignee.is_active or not can_see(assignee, company):
+    if not can_hold(await session.get(User, assignee_id), company):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "No such assignee")
     task = Task(
         company_id=body.company_id,
@@ -65,11 +65,13 @@ async def create_task(body: TaskIn, session: SessionDep, user: CurrentUser) -> T
 async def update_task(
     task_id: uuid.UUID, body: TaskPatch, session: SessionDep, user: CurrentUser
 ) -> TaskOut:
+    """For the assignee while they may see the account, an admin, or the account's RM if the task
+    has no assignee or its assignee was an RM who no longer has the account."""
     task = await session.get(Task, task_id)
     if task is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such task")
-    await account_or_404(session, task.company_id, user, "No such task")
-    if task.assignee_id != user.id and user.role != Role.ADMIN:
+    company = await account_or_404(session, task.company_id, user, "No such task")
+    if not await may_update(session, task, company, user):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the assignee can update this task")
     if task.status != body.status:
         old = task.status

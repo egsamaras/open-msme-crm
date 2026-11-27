@@ -40,6 +40,27 @@ def can_see(user: User, company: Company) -> bool:
     return user.role != Role.RM or company.rm_id == user.id
 
 
+def can_hold(user: User | None, company: Company) -> bool:
+    """Whether `user` may be given a task on the account: they exist, are active and may see it."""
+    return user is not None and user.is_active and can_see(user, company)
+
+
+def passes_to_rm(assignee: User | None, company: Company) -> bool:
+    """Whether a task held by `assignee` passes to the account's RM: it has no assignee, or its
+    assignee is an RM who no longer has the account. Anyone else's task stays theirs, even once
+    they are inactive: only they or an admin may update it."""
+    return assignee is None or (assignee.role == Role.RM and not can_see(assignee, company))
+
+
+def passes_to_rm_sql(holder: Any) -> ColumnElement[bool]:
+    """SQL twin of `passes_to_rm`, for a query that joins Company and outer-joins `holder` (the
+    task's assignee, a User alias)."""
+    return or_(
+        holder.id.is_(None),
+        and_(holder.role == Role.RM, Company.rm_id.is_distinct_from(holder.id)),
+    )
+
+
 async def account_or_404(
     session: AsyncSession, company_id: uuid.UUID, user: User, detail: str = "No such account"
 ) -> Company:

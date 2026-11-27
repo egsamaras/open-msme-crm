@@ -11,7 +11,7 @@ from sqlalchemy.orm import aliased
 from sse_starlette.sse import EventSourceResponse
 
 from app.agents import runtime
-from app.agents.actions import LOCKED_FIELDS, payload_schema
+from app.agents.actions import edit_error, payload_schema
 from app.api.deps import CurrentUser, SessionDep, require_roles
 from app.core.config import get_settings
 from app.db.session import get_sessionmaker
@@ -194,13 +194,9 @@ async def resolve_approval(
                     f"Edited payload is not valid: {e.errors()[0]['msg']}",
                 ) from e
             edited_json = edited.model_dump(mode="json")
-            # The target and the evidence stay as proposed.
-            for locked in LOCKED_FIELDS[item.action_type]:
-                if edited_json.get(locked) != item.proposed_payload.get(locked):
-                    what = "the account" if locked == "company_id" else locked.replace("_", " ")
-                    raise HTTPException(
-                        status.HTTP_422_UNPROCESSABLE_CONTENT, f"You can't change {what}"
-                    )
+            error = await edit_error(session, item.action_type, item.proposed_payload, edited_json)
+            if error:
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, error)
             if edited_json != item.proposed_payload:
                 item.edited_payload = edited_json
                 final = edited_json
@@ -229,7 +225,9 @@ async def resolve_approval(
     await runtime.resume(run_id, decision=new_status.value, payload=final, reviewer_id=user.id)
     session.expire_all()
     await session.refresh(user)
-    return await _load_approval(session, approval_id, user)
+    # Access was checked under the row lock; the answer stands even if the account moved since.
+    row = (await session.execute(_approvals_query().where(ApprovalItem.id == approval_id))).one()
+    return _approval_out(row, user)
 
 
 # ---------- agent runs ----------
@@ -274,7 +272,13 @@ async def get_run(run_id: uuid.UUID, session: SessionDep, user: CurrentUser) -> 
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such agent run")
     run, company_name, trigger = row
-    cited = {uuid.UUID(c) for e in run.trace if e.get("type") == "llm" for c in e.get("cited", [])}
+    # Only citations the check accepted: a rejected id may name a record of another account.
+    cited = {
+        uuid.UUID(c)
+        for e in run.trace
+        if e.get("type") == "llm"
+        for c in set(e.get("cited", [])) - set(e.get("rejected_citations", []))
+    }
     approval_ids = list(
         await session.scalars(select(ApprovalItem.id).where(ApprovalItem.agent_run_id == run.id))
     )
@@ -291,10 +295,12 @@ async def get_run(run_id: uuid.UUID, session: SessionDep, user: CurrentUser) -> 
 async def stream_run(
     run_id: uuid.UUID, request: Request, session: SessionDep, user: CurrentUser
 ) -> EventSourceResponse:
-    """Server-Sent Events: trace events as they're written, then the final status."""
+    """Server-Sent Events: trace events as they're written, then the final status. Ends with an
+    `error` event instead if you lose access to the run meanwhile."""
     visible = select(AgentRun.id).where(AgentRun.id == run_id, visible_runs(user))
     if await session.scalar(visible) is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No such agent run")
+    user_id = user.id
     await session.close()  # don't hold a connection for the life of the stream
     pause = {AgentRunStatus.AWAITING_APPROVAL, *runtime.TERMINAL}
 
@@ -302,7 +308,14 @@ async def stream_run(
         sent = 0
         for _ in range(600):  # stop after ~5 minutes regardless
             async with get_sessionmaker()() as s:
-                run = await s.get(AgentRun, run_id)
+                # Check access on every poll: the account may change hands, or the user be
+                # deactivated, while the stream is open.
+                viewer = await s.get(User, user_id)
+                run: AgentRun | None = None
+                if viewer is not None and viewer.is_active:
+                    run = await s.scalar(
+                        select(AgentRun).where(AgentRun.id == run_id, visible_runs(viewer))
+                    )
             if run is None:
                 yield {"event": "error", "data": json.dumps({"detail": "No such agent run"})}
                 return
