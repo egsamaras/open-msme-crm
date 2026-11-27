@@ -33,8 +33,18 @@ export function describeSignal(trigger: Signal['trigger'], m: Metrics): string {
     case 'BOUNCED_CHEQUES':
       return `${s(m, 'count')} bounced cheque(s) in the month to ${formatDate(s(m, 'period'))}`
     case 'DOC_EXPIRY': {
+      const doc = DOC_LABEL[s(m, 'document_type')] ?? s(m, 'document_type')
+      const expiry = formatDate(s(m, 'expiry_date'))
+      // The scan marks an alert whose document is no longer in force; its day count is then stale.
+      const inForce = m.in_force
+      if (typeof inForce === 'object' && inForce !== null) {
+        const current = s(inForce as Metrics, 'expiry_date')
+        return current
+          ? `${doc} of ${expiry} is no longer in force: the one in force runs to ${formatDate(current)}`
+          : `${doc} of ${expiry} is no longer in force, and none is in force now`
+      }
       const days = Number(m.days_left)
-      return `${DOC_LABEL[s(m, 'document_type')] ?? s(m, 'document_type')} ${days < 0 ? 'expired' : 'expires'} ${formatDate(s(m, 'expiry_date'))} (${expiryWhen(days)})`
+      return `${doc} ${days < 0 ? 'expired' : 'expires'} ${expiry} (${expiryWhen(days)})`
     }
     case 'COVENANT_BREACH':
       return `${s(m, 'metric')} ${s(m, 'actual')} vs covenant ${s(m, 'operator')} ${s(m, 'threshold')} on ${PRODUCT_LABEL[s(m, 'facility_product')] ?? s(m, 'facility_product')}`

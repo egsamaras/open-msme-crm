@@ -203,8 +203,11 @@ annualised monthly snapshots) → then:
   (`UPDATE_KYB_RECORD`: the register takes the declared percentages);
 - anything else → `propose_kyb_flag` → `await_kyb_flag` → `apply_kyb_flag` (`FLAG_KYB`: account
   flagged, document rejected, RM task).
-Both approvals are four-eyes (compliance). Uploads accept `.txt`, `.json` and `.pdf` (text via
-`pypdf`), up to 1 MB.
+Both approvals are four-eyes (compliance). For the trade licence and the CR certificate, an expiry
+date in the past (`expired`), no readable expiry date (`missing_expiry`) and an expiry more than
+`KYB_MAX_VALIDITY_YEARS` (default 5) years from today (`implausible_expiry`) are discrepancies, so
+the document goes to compliance as a `FLAG_KYB` instead of being verified. Uploads accept `.txt`,
+`.json` and `.pdf` (text via `pypdf`), up to 1 MB.
 
 **Graph 3 — Early-warning portfolio scan**
 `POST /api/agents/ews-scan` (button) and a CLI entry point for cron
@@ -230,6 +233,12 @@ Rules (all thresholds in settings):
   verified document with the latest expiry date. Until a renewal is verified the old document stays
   in force and keeps alerting; pending and rejected uploads never alert. The signal cites the
   document in force, and one already open when a renewal is verified stays open until resolved.
+  Each scan marks the unresolved `DOC_EXPIRY` signals of the accounts it covers whose cited
+  document is no longer in force: `metrics.in_force` holds the id and expiry date of the document
+  now in force, or nulls when none of that type is in force. Severity, status and the other
+  metrics stay as they were, and the Risk radar says the document is no longer in force instead of
+  giving its stale day count. If the cited document comes back into force, the next scan removes
+  the mark. Like a refresh, marking starts no review and isn't audited.
 - any facility covenant failing on the latest snapshot → `COVENANT_BREACH` (`HIGH`)
 The Risk radar (`GET /api/ews`, `PATCH /api/ews/{id}`) lists signals by severity and lets RMs and
 credit officers mark them investigating or resolved (resolving needs a note).
@@ -314,7 +323,8 @@ Each phase ends with all checks in CLAUDE.md green and a short summary, then sto
 All settings come from environment variables via `pydantic-settings`; `.env.example` lists every one.
 Key ones: `ENVIRONMENT`, `DATABASE_URL`, `CHECKPOINT_DATABASE_URL`, `JWT_SECRET`,
 `LLM_PROVIDER` (`mock` | `anthropic` | `openai_compatible`), `LLM_MODEL`, `LLM_BASE_URL`,
-`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEFAULT_CURRENCY`, `UBO_THRESHOLD_PCT`, EWS thresholds.
+`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEFAULT_CURRENCY`, `UBO_THRESHOLD_PCT`,
+`KYB_MAX_VALIDITY_YEARS`, EWS thresholds.
 
 ---
 
