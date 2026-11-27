@@ -106,6 +106,14 @@ def validate(fields: ExtractedFields, today: date) -> list[str]:
     return problems
 
 
+def _years_after(day: date, years: int) -> date:
+    """`day` that many years later; 29 February becomes 28 February in a common year."""
+    try:
+        return day.replace(year=day.year + years)
+    except ValueError:
+        return day.replace(year=day.year + years, day=28)
+
+
 def reconcile(
     *,
     doc_type: DocumentType,
@@ -118,6 +126,7 @@ def reconcile(
     ubo_threshold: Decimal,
     today: date,
     expiry_warning_days: int = 30,
+    max_validity_years: int = 5,
 ) -> Reconciliation:
     """Compare a document's extracted fields with what the bank holds."""
     r = Reconciliation()
@@ -132,14 +141,31 @@ def reconcile(
             }
         )
 
-    if doc_type in EXPIRING_DOC_TYPES and fields.expiry_date is not None:
-        days = (fields.expiry_date - today).days
-        if days < 0:
+    if doc_type in EXPIRING_DOC_TYPES:
+        # If verified, an undated licence or certificate never takes over from the one in force,
+        # and one dated implausibly far ahead takes over and silences its expiry alert, so both
+        # go to a person.
+        expiry = fields.expiry_date
+        if expiry is None:
             r.discrepancies.append(
-                {"kind": "expired", "detail": f"expired on {fields.expiry_date.isoformat()}"}
+                {"kind": "missing_expiry", "detail": "no expiry date could be read"}
             )
-        elif days <= expiry_warning_days:
-            r.notes.append(f"valid, but expires in {days} days ({fields.expiry_date.isoformat()})")
+        elif expiry > _years_after(today, max_validity_years):
+            r.discrepancies.append(
+                {
+                    "kind": "implausible_expiry",
+                    "detail": f"expires on {expiry.isoformat()}, more than "
+                    f"{max_validity_years} year{'' if max_validity_years == 1 else 's'} from now",
+                }
+            )
+        else:
+            days = (expiry - today).days
+            if days < 0:
+                r.discrepancies.append(
+                    {"kind": "expired", "detail": f"expired on {expiry.isoformat()}"}
+                )
+            elif days <= expiry_warning_days:
+                r.notes.append(f"valid, but expires in {days} days ({expiry.isoformat()})")
 
     if doc_type == DocumentType.UBO_DECLARATION and fields.owners and not problems:
         held = {o["full_name"].casefold(): o for o in owners}

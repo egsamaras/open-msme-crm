@@ -7,12 +7,21 @@ from typing import Any
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.db.seed import sid
-from app.models import ApprovalItem, BeneficialOwner, Company, Document, Task
-from app.models.enums import DocumentType, KybStatus, VerificationStatus
+from app.models import (
+    AgentRun,
+    ApprovalItem,
+    BeneficialOwner,
+    Company,
+    Document,
+    EarlyWarningSignal,
+    Task,
+)
+from app.models.enums import DocumentType, EwsStatus, EwsTrigger, KybStatus, VerificationStatus
 from app.services import audit
 from app.services.kyb import ExtractedFields, ExtractedOwner, reconcile, text_from_upload, validate
 from tests.conftest import login
@@ -22,6 +31,8 @@ GULF_SPICE_UBO = sid("doc", "gulf-spice", "ubo")
 FALCON = sid("company", "falcon-steel")
 SADAF = sid("company", "sadaf-build")
 NAKHEEL = sid("company", "nakheel-dates")
+PEARL = sid("company", "pearl-bay")  # licence expiring in 18 days
+PEARL_LICENCE = sid("doc", "pearl-bay", "licence")
 TODAY = date(2026, 11, 23)
 
 
@@ -46,10 +57,11 @@ def test_validate_catches_impossible_values() -> None:
 
 
 def _rec(doc_type: DocumentType, fields: ExtractedFields, **kw: Any) -> Any:
+    today = kw.get("today", TODAY)
     return reconcile(
         doc_type=doc_type,
         fields=fields,
-        problems=validate(fields, TODAY),
+        problems=validate(fields, today),
         company={"cr_number": "CR-1"},
         owners=kw.get(
             "owners",
@@ -61,7 +73,8 @@ def _rec(doc_type: DocumentType, fields: ExtractedFields, **kw: Any) -> Any:
         annual_revenue=kw.get("revenue"),
         annual_ebitda=None,
         ubo_threshold=D(25),
-        today=TODAY,
+        today=today,
+        max_validity_years=kw.get("max_validity_years", 5),
     )
 
 
@@ -103,6 +116,42 @@ def test_reconcile_owner_changes_licence_dates_and_financials() -> None:
         DocumentType.FINANCIAL_STATEMENT, ExtractedFields(revenue=D("1050")), revenue=D("1000")
     )
     assert close.discrepancies == []
+
+
+def test_a_licence_needs_a_readable_and_plausible_expiry_date() -> None:
+    """If verified, a licence or certificate with no date would never take over from the one in
+    force, and one dated decades ahead would take over and silence its expiry alert. Both go to a
+    person instead."""
+    undated = _rec(DocumentType.TRADE_LICENSE, ExtractedFields())
+    assert undated.discrepancies == [
+        {"kind": "missing_expiry", "detail": "no expiry date could be read"}
+    ]
+    assert not undated.owner_changes_only
+
+    five_years = ExtractedFields(expiry_date=date(2031, 11, 23))  # exactly five years: plausible
+    assert _rec(DocumentType.CR_CERTIFICATE, five_years).discrepancies == []
+    later = ExtractedFields(expiry_date=date(2031, 11, 24))
+    far = _rec(DocumentType.CR_CERTIFICATE, later)
+    assert far.discrepancies == [
+        {
+            "kind": "implausible_expiry",
+            "detail": "expires on 2031-11-24, more than 5 years from now",
+        }
+    ]
+    assert not far.owner_changes_only
+    assert _rec(DocumentType.CR_CERTIFICATE, later, max_validity_years=10).discrepancies == []
+    [one_year] = _rec(
+        DocumentType.TRADE_LICENSE,
+        ExtractedFields(expiry_date=date(2027, 11, 24)),
+        max_validity_years=1,
+    ).discrepancies
+    assert one_year["detail"] == "expires on 2027-11-24, more than 1 year from now"
+
+    # Five years from 29 February is 28 February.
+    leap = date(2028, 2, 29)
+    for expiry, kinds in [(date(2033, 2, 28), []), (date(2033, 3, 1), ["implausible_expiry"])]:
+        found = _rec(DocumentType.TRADE_LICENSE, ExtractedFields(expiry_date=expiry), today=leap)
+        assert [d["kind"] for d in found.discrepancies] == kinds
 
 
 def test_uploads_are_checked_before_anyone_reads_them() -> None:
@@ -253,6 +302,83 @@ async def test_expired_licence_is_flagged_only_after_compliance_approves(
         select(Task).where(Task.company_id == SADAF, Task.title.like("KYB issue%"))
     )
     assert task is not None
+
+
+async def _remove_check(session: AsyncSession, run: dict[str, Any]) -> None:
+    """Delete an uploaded document and its check; the check's approval goes with its run."""
+    await session.execute(delete(AgentRun).where(AgentRun.id == uuid.UUID(run["id"])))
+    await session.execute(
+        delete(Document).where(Document.id == uuid.UUID(run["result"]["document_id"]))
+    )
+    await session.commit()
+
+
+async def test_a_licence_with_no_readable_expiry_waits_for_compliance(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    """The parser reads only ISO dates, so this renewal's date in words leaves it undated. It waits
+    for compliance, still pending, instead of being verified with no date."""
+    await login(client, "rm@demo.local")
+    text = "TRADE LICENCE\nExpiry date: 31 December 2027\n"
+    run = await _run(client, (await _upload(client, PEARL, "TRADE_LICENSE", text)).json()["id"])
+    try:
+        assert run["status"] == "AWAITING_APPROVAL"
+        item = await _approval(client, run["id"])
+        assert item["action_type"] == "FLAG_KYB"
+        assert item["proposed_payload"]["discrepancies"] == [
+            {"kind": "missing_expiry", "detail": "no expiry date could be read"}
+        ]
+        doc = await session.get(Document, uuid.UUID(run["result"]["document_id"]))
+        assert doc is not None and doc.verification_status == VerificationStatus.PENDING
+    finally:
+        await _remove_check(session, run)
+
+
+async def test_a_licence_dated_implausibly_far_ahead_waits_for_compliance(
+    client: AsyncClient, session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """If verified, it would become the licence in force and silence the expiry alert on the one
+    Pearl Bay holds. It stays pending instead, and the next scan still alerts on that licence."""
+    # Off its default of 5, so the detail shows the check reads KYB_MAX_VALIDITY_YEARS.
+    monkeypatch.setattr(get_settings(), "kyb_max_validity_years", 10)
+    await login(client, "rm@demo.local")
+    text = "TRADE LICENCE\nExpiry date: 2099-12-31\n"
+    run = await _run(client, (await _upload(client, PEARL, "TRADE_LICENSE", text)).json()["id"])
+    reviews: list[dict[str, Any]] = []
+    try:
+        assert run["status"] == "AWAITING_APPROVAL"
+        item = await _approval(client, run["id"])
+        assert item["action_type"] == "FLAG_KYB"
+        assert item["proposed_payload"]["discrepancies"] == [
+            {
+                "kind": "implausible_expiry",
+                "detail": "expires on 2099-12-31, more than 10 years from now",
+            }
+        ]
+        doc = await session.get(Document, uuid.UUID(run["result"]["document_id"]))
+        assert doc is not None and doc.verification_status == VerificationStatus.PENDING
+        assert doc.expiry_date is None
+
+        scan = await _run(client, (await client.post("/api/agents/ews-scan")).json()["id"])
+        reviews = scan["result"]["reviews"]
+        found = next(e for e in scan["trace"] if e.get("name") == "scan_portfolio")["output"]
+        assert found[str(PEARL)] == ["DOC_EXPIRY"]
+        alert = await session.scalar(
+            select(EarlyWarningSignal.metrics).where(
+                EarlyWarningSignal.company_id == PEARL,
+                EarlyWarningSignal.trigger == EwsTrigger.DOC_EXPIRY,
+                EarlyWarningSignal.status != EwsStatus.RESOLVED,
+            )
+        )
+        assert alert["source_record_ids"] == [str(PEARL_LICENCE)] and "in_force" not in alert
+    finally:
+        # Whatever the scan raised (it raises again what was resolved earlier), and its reviews.
+        for review in reviews:
+            ids = [uuid.UUID(i) for i in review["signal_ids"]]
+            await session.execute(delete(EarlyWarningSignal).where(EarlyWarningSignal.id.in_(ids)))
+            child = uuid.UUID(review["child_run_id"])
+            await session.execute(delete(AgentRun).where(AgentRun.id == child))
+        await _remove_check(session, run)
 
 
 async def test_instructions_inside_a_document_are_just_data(
