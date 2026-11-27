@@ -4,7 +4,7 @@ import { Link } from 'react-router'
 import type { AccountListItem, Role } from '@/api/client'
 import { useMe } from '@/auth'
 import { Badge, Card, EmptyState, ErrorState, Loading, PageHeader } from '@/components/ui'
-import { daysUntil, formatDate, formatMoney, formatPct, percentOf, titleCase } from '@/lib/format'
+import { daysUntil, expiryLabel, formatDate, formatMoney, formatPct, percentOf, titleCase } from '@/lib/format'
 import { useAccounts } from './accounts'
 
 const KYB_TONE = { VERIFIED: 'good', PENDING_RENEWAL: 'warn', FLAGGED: 'bad' } as const
@@ -12,14 +12,21 @@ const KYB_TONE = { VERIFIED: 'good', PENDING_RENEWAL: 'warn', FLAGGED: 'bad' } a
 const DESCRIPTION: Record<Role, string> = {
   RM: 'The accounts assigned to you.',
   CREDIT_OFFICER: 'Every account in the bank, most alerts and highest risk first.',
-  COMPLIANCE: 'Every account in the bank, KYB issues first, then the soonest document expiry.',
+  COMPLIANCE: 'Every account in the bank, KYB issues first, then the soonest trade licence or CR certificate expiry.',
   ADMIN: 'Every account in the bank.',
 }
 
 function Expiry({ date }: { date: string | null | undefined }) {
   if (!date) return <span className="text-slate-400">—</span>
   const days = daysUntil(date)
-  return days > 30 ? <span>{formatDate(date)}</span> : <Badge tone={days < 0 ? 'bad' : 'warn'}>{formatDate(date)}</Badge>
+  if (days > 30) return <span className="whitespace-nowrap">{formatDate(date)}</span>
+  // The state is in words as well as colour, the same words as on the account's Documents tab.
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="whitespace-nowrap">{formatDate(date)}</span>
+      <Badge tone={days < 0 ? 'bad' : 'warn'}>{expiryLabel(days)}</Badge>
+    </div>
+  )
 }
 
 function UtilisationBar({ row }: { row: AccountListItem }) {
@@ -42,12 +49,14 @@ export function AccountsPage() {
   const role = useMe().data?.role ?? 'RM'
   const wholeBank = role !== 'RM'
   const compliance = role === 'COMPLIANCE'
+  const n = accounts.data?.length ?? 0
+  const count = accounts.data && !deferred ? ` ${n} ${n === 1 ? 'account' : 'accounts'}.` : ''
 
   return (
     <>
       <PageHeader
         title="Accounts"
-        description={`${DESCRIPTION[role]}${accounts.data && !deferred ? ` ${accounts.data.length} accounts.` : ''} Amounts are in each client's own currency.`}
+        description={`${DESCRIPTION[role]}${count} Amounts are in each client's own currency.`}
         actions={
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-slate-400" aria-hidden />
@@ -68,7 +77,11 @@ export function AccountsPage() {
         ) : accounts.isError ? (
           <ErrorState error={accounts.error} onRetry={() => void accounts.refetch()} />
         ) : accounts.data.length === 0 ? (
-          <EmptyState title="No accounts match">Try a different name or CR number.</EmptyState>
+          deferred ? (
+            <EmptyState title="No accounts match">Try a different name or CR number.</EmptyState>
+          ) : (
+            <EmptyState title={wholeBank ? 'No accounts yet' : 'No accounts are assigned to you yet'} />
+          )
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">

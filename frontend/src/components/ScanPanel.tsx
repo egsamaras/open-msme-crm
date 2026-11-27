@@ -39,7 +39,7 @@ export function ScanPanel({ compact = false }: { compact?: boolean }) {
           </h2>
           {!compact && (
             <p className="text-xs text-slate-500">
-              Fixed rules check {wholeBank ? 'every account in the bank' : 'your accounts'}. Each company with a new alert gets its own agent review, which waits for your approval.
+              Fixed rules check {wholeBank ? 'every account in the bank' : 'your accounts'}. Each company with a new alert gets its own agent review, which waits for approval.
             </p>
           )}
         </div>

@@ -48,9 +48,10 @@ export function CommandCentrePage({ user }: { user: User }) {
           const hot = utils.filter((u) => u >= 75).length
           const kybDue = rows.filter((r) => r.kyb_status !== 'VERIFIED').length
           const alerts = rows.reduce((n, r) => n + toNumber(r.open_ews), 0)
+          const markets = new Set(rows.map((r) => r.country)).size
           return (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <Kpi label="Accounts" value={String(rows.length)} hint={`Across ${new Set(rows.map((r) => r.country)).size} GCC markets`} />
+              <Kpi label="Accounts" value={String(rows.length)} hint={`Across ${markets} GCC ${markets === 1 ? 'market' : 'markets'}`} />
               <Kpi label="Avg utilisation" value={`${avgUtil.toFixed(0)}%`} hint={`${hot} ${hot === 1 ? 'account' : 'accounts'} at 75% or more`} />
               <Kpi label="KYB attention" value={String(kybDue)} hint="Pending renewal or flagged" />
               <Kpi label="Open alerts" value={String(alerts)} hint="Early-warning signals: see the Risk radar" to="/risk" />

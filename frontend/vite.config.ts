@@ -16,6 +16,8 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // Child processes, not threads, so a test can change TZ at run time (inTimezone in src/test/dates.ts).
+    pool: 'forks',
     setupFiles: ['./src/test/setup.ts'],
     css: false,
     exclude: ['e2e/**', 'node_modules/**'],

@@ -66,7 +66,7 @@ export function RiskPage() {
           <ErrorState error={signals.error} onRetry={() => void signals.refetch()} />
         ) : signals.data.length === 0 ? (
           <EmptyState title={tab === 'open' ? 'No open alerts' : 'Nothing resolved yet'}>
-            {tab === 'open' && <p>Run a portfolio scan to check accounts against the rules.</p>}
+            {tab === 'open' && SCAN_ROLES.has(role) && <p>Run a portfolio scan to check accounts against the rules.</p>}
           </EmptyState>
         ) : (
           <div className="overflow-x-auto">

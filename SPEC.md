@@ -145,12 +145,31 @@ Four LangGraph workflows, checkpointed with `AsyncPostgresSaver` so a paused run
    output. Tests and CI use mock mode.
 9. **Data residency.** Seed data is synthetic. The README warns against sending real customer data to
    an external model and documents `openai_compatible` for self-hosted models.
-10. **Account access.** RMs see only accounts assigned to them, on every route: accounts, deals,
-    tasks, documents, alerts, approvals and agent runs. Anything else answers 404, so its existence
-    doesn't leak. Credit officers, compliance and admins see the whole bank. An RM's scan covers
-    only their accounts; cron and credit-officer scans cover the bank. The accounts list is ordered
-    by role: credit by alerts then risk, compliance by KYB status then soonest document expiry.
-    The rules live in `app/services/access.py`.
+10. **Account access.** RMs see only the accounts assigned to them. Credit officers, compliance and
+    admins see the whole bank.
+    - **Every route.** The rule covers accounts, deals, tasks, documents, alerts, approvals and
+      agent runs. A record the user may not see answers 404, like a missing one, so its existence
+      doesn't leak.
+    - **Scans.** An RM's scan covers only their accounts; cron, credit-officer and admin scans
+      cover the bank. A scan run has no account, so it stays with whoever started it, as a record
+      of what they could see then.
+    - **Work follows the account.** When an account changes hands, its new RM takes over the
+      previous RM's open work. The account's RM can edit all its deals, whoever is recorded as
+      their owner. They can also update, and see in their task list, its tasks with no assignee,
+      or whose assignee was an RM who no longer has the account. A task held by a credit officer,
+      compliance officer or admin stays theirs, even if they are deactivated: only they or an
+      admin can update it.
+    - **Agent tasks.** A task from an approved `CREATE_TASK` goes to the first of these who is
+      active and can see the account: the proposed assignee, the account's RM, the person who
+      started the run. If none is, it has no assignee. A reviewer may give it to any active user
+      who can see the account. The escalation's call task and the KYB follow-up go to the
+      account's RM, and credit tasks to the reviewer.
+    - **Accounts list.** It is ordered by role: credit by alerts then risk, compliance by KYB
+      status then next expiry. Next expiry looks at the trade licence and the CR certificate. For
+      each, it takes the latest expiry date on a verified document; the list shows the earlier of
+      the two. A verified renewal moves it; pending or rejected uploads and other documents don't
+      count.
+    - **In code.** Who may see an account is decided in `app/services/access.py`.
 
 ### 4.2 The four graphs
 

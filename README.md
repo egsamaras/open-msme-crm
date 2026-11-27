@@ -26,7 +26,7 @@ or reject it, and every step is written to a tamper-evident audit trail.
 |---|---|
 | **Humans approve every consequential action** | LangGraph `interrupt()` before any write or outbound message; resume only through the approvals API. |
 | **Four-eyes on credit and compliance** | For credit memo submission, risk escalation and KYB changes the reviewer must be a different person with the right role — checked on the server. |
-| **RMs see only their own accounts** | Enforced on every route, including agent runs, approvals and scans; other accounts answer 404. Credit and compliance see the whole bank. |
+| **RMs see only their own accounts** | Decided in `backend/app/services/access.py` and enforced on every route: other RMs' accounts answer 404, and credit and compliance see the whole bank. When an account changes hands, the new RM takes over the previous RM's open work; past scans stay with whoever ran them. |
 | **The LLM never does the maths** | DSCR, leverage, utilisation and covenant tests come from tested `Decimal` code. Snapshots store raw inputs only, never pre-computed ratios. |
 | **Every claim is cited** | Agent outputs carry the ids of the database records they used; unknown ids are rejected. |
 | **Tamper-evident audit** | Append-only table (a Postgres trigger blocks UPDATE, DELETE and TRUNCATE), with a SHA-256 hash chain you can verify. |
@@ -107,9 +107,9 @@ A five-minute tour (use **View as** to switch persona):
    company's review streams in and waits in **Approvals**. Approve or edit the simulated emails.
 2. As the **credit officer**, approve the escalations for Dunes Freight and Oasis Clinics. The
    alerts move to "investigating" and both of you get tasks.
-3. **Pipeline** as the RM: open Gulf Spice (credit underwriting) and press **Draft credit memo**.
+3. **Pipeline** as Layla: open Gulf Spice (credit underwriting) and press **Draft credit memo**.
    As the credit officer, edit a section in **Approvals** and approve; the deal moves to Approval.
-4. **Accounts → Gulf Spice → Owners & documents** as the RM: **Run KYB check** on the pending UBO
+4. **Accounts → Gulf Spice → Owners & documents** as Layla: **Run KYB check** on the pending UBO
    declaration. As compliance, review the ownership changes and approve.
 5. Any account: **Prepare briefing**. Then open **Audit trail** as compliance and re-check the
    hash chain.
@@ -123,6 +123,12 @@ Copy `.env.example` to `.env` to change anything; every setting has a safe devel
 
 To start the demo over, `uv run python -m app.db.reset --yes` (from `backend/`) wipes the database,
 migrates and seeds it again. It refuses to run in production.
+
+Re-seeding with `uv run python -m app.db.seed` (from `backend/`) keeps the records you created but
+rewrites the seeded ones, which can undo your edits to them. On an older database with a single RM,
+it adds Yusuf Darwish (`rm2@demo.local`) and moves seven of Layla's accounts to him. He can then
+work their open deals and Layla's tasks on them, and a follow-up approved after the move becomes
+his task.
 
 ## Synthetic portfolio
 
