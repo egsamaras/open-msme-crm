@@ -16,7 +16,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.models import Company, Document, Facility, FacilityUtilization, FinancialSnapshot
-from app.models.enums import DocumentType, EwsTrigger, PeriodType, Product, Severity
+from app.models.enums import (
+    DocumentType,
+    EwsTrigger,
+    PeriodType,
+    Product,
+    Severity,
+    VerificationStatus,
+)
 from app.services import financial_math as fm
 
 WORKING_CAPITAL_PRODUCTS = frozenset({Product.WORKING_CAPITAL, Product.MURABAHA})
@@ -115,11 +122,26 @@ def bounced_cheques(inp: CompanyInputs, s: Settings) -> Finding | None:
 
 
 def doc_expiries(inp: CompanyInputs, s: Settings, today: date) -> list[Finding]:
+    """The trade licence or CR certificate in force expires within the threshold.
+
+    In force is the rule behind the Accounts list's next expiry: for each type, the verified
+    document with the latest expiry date. A verified renewal takes over from the old document;
+    pending and rejected uploads don't count. Of two with the same date, the one added first stays
+    in force, so uploading a copy doesn't raise a second alert. The finding cites the document in
+    force, which is how the scan matches it to an alert already open on that document.
+    """
+    in_force: dict[DocumentType, tuple[date, Document]] = {}
+    for d in sorted(inp.documents, key=lambda doc: (doc.created_at, str(doc.id))):
+        if (
+            d.doc_type in EXPIRING_DOCS
+            and d.verification_status == VerificationStatus.VERIFIED
+            and d.expiry_date is not None
+            and (d.doc_type not in in_force or d.expiry_date > in_force[d.doc_type][0])
+        ):
+            in_force[d.doc_type] = (d.expiry_date, d)
     out = []
-    for d in inp.documents:
-        if d.doc_type not in EXPIRING_DOCS or d.expiry_date is None:
-            continue
-        days_left = (d.expiry_date - today).days
+    for doc_type, (expiry, d) in sorted(in_force.items()):
+        days_left = (expiry - today).days
         if days_left > s.ews_doc_expiry_days:
             continue
         out.append(
@@ -127,8 +149,8 @@ def doc_expiries(inp: CompanyInputs, s: Settings, today: date) -> list[Finding]:
                 EwsTrigger.DOC_EXPIRY,
                 Severity.HIGH if days_left <= 7 else Severity.MEDIUM,
                 {
-                    "document_type": d.doc_type.value,
-                    "expiry_date": d.expiry_date.isoformat(),
+                    "document_type": doc_type.value,
+                    "expiry_date": expiry.isoformat(),
                     "days_left": days_left,
                     "threshold_days": s.ews_doc_expiry_days,
                 },
@@ -197,6 +219,7 @@ async def load_inputs(session: AsyncSession) -> list[CompanyInputs]:
         by_id[facilities[u.facility_id].company_id].utilization.setdefault(
             u.facility_id, []
         ).append(u)
+    # Every licence and certificate, whatever its status: `doc_expiries` picks the one in force.
     for d in await session.scalars(select(Document).where(Document.doc_type.in_(EXPIRING_DOCS))):
         by_id[d.company_id].documents.append(d)
     return list(by_id.values())

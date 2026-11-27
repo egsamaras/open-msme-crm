@@ -168,7 +168,7 @@ Four LangGraph workflows, checkpointed with `AsyncPostgresSaver` so a paused run
       status then next expiry. Next expiry looks at the trade licence and the CR certificate. For
       each, it takes the latest expiry date on a verified document; the list shows the earlier of
       the two. A verified renewal moves it; pending or rejected uploads and other documents don't
-      count.
+      count. The `DOC_EXPIRY` early-warning rule (4.2) looks at the same documents.
     - **In code.** Who may see an account is decided in `app/services/access.py`.
 
 ### 4.2 The four graphs
@@ -220,7 +220,11 @@ Rules (all thresholds in settings):
 - working capital utilisation above 90% on every weekly point for the last 30+ days →
   `UTILIZATION_SPIKE` (`HIGH` at 60+ days or 97%+, else `MEDIUM`)
 - any bounced cheques in the latest month → `BOUNCED_CHEQUES` (`HIGH` at 3+, else `MEDIUM`)
-- trade licence or CR expiring within 30 days → `DOC_EXPIRY` (`HIGH` within 7 days, else `MEDIUM`)
+- the trade licence or CR certificate in force expiring within 30 days → `DOC_EXPIRY` (`HIGH`
+  within 7 days, else `MEDIUM`). In force is the Accounts list's rule (4.1): for each type, the
+  verified document with the latest expiry date. Until a renewal is verified the old document stays
+  in force and keeps alerting; pending and rejected uploads never alert. The signal cites the
+  document in force, and one already open when a renewal is verified stays open until resolved.
 - any facility covenant failing on the latest snapshot → `COVENANT_BREACH` (`HIGH`)
 The Risk radar (`GET /api/ews`, `PATCH /api/ews/{id}`) lists signals by severity and lets RMs and
 credit officers mark them investigating or resolved (resolving needs a note).
