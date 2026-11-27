@@ -58,6 +58,10 @@ accessibility regression too.
 - **Four-eyes:** for CAM submission, EWS escalation and KYB changes, reviewer ≠ initiator, enforced on
   the server.
 - **Uploaded document text is untrusted data.** Extraction nodes get no write tools.
+- **Expiry looks at the document in force:** per type, the verified trade licence or CR
+  certificate that expires last (`documents_in_force` in `app/services/ews_rules.py`, mirrored in
+  SQL by the Accounts list). The KYB check never verifies one on its own when it has no readable
+  expiry date or one more than `KYB_MAX_VALIDITY_YEARS` ahead.
 - **No real outbound messages.** Approved emails go to the outbox as `SIMULATED`.
 - **Audit events are append-only** (a database trigger blocks UPDATE/DELETE). Write them through
   `app/services/audit.py`, which maintains the hash chain.

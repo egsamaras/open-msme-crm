@@ -32,6 +32,7 @@ class Settings(BaseSettings):
 
     default_currency: str = "BHD"
     ubo_threshold_pct: Decimal = Decimal("25")
+    kyb_max_validity_years: int = 5
 
     ews_balance_drop_pct: Decimal = Decimal("25")
     ews_utilization_pct: Decimal = Decimal("90")

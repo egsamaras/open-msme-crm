@@ -42,14 +42,19 @@ or reject it, and every step is written to a tamper-evident audit trail.
 2. **KYB and document intake** — upload a `.txt`, `.json` or `.pdf`; the model extracts fields with
    no tools that write, then fixed rules validate them and reconcile CR number, expiry, owners and
    financials against the record. Clean documents are verified; differences go to a compliance
-   officer as a register update or a KYB flag (four-eyes).
+   officer as a register update or a KYB flag (four-eyes). A licence or CR certificate with no
+   readable expiry date, or one more than five years away (`KYB_MAX_VALIDITY_YEARS`), counts as a
+   difference, so it is never verified on its own.
 3. **Early-warning scan** — fixed rules (balance drop over two months, working capital above 90%
    for 30+ days, bounced cheques, licence or CR expiring, covenant breaches) find the signals; each
    flagged company gets its own agent thread that explains the likely cause and drafts a follow-up.
    High or critical signals go to a credit officer as an escalation (four-eyes); others become a
-   simulated email or a call task for the RM. Also runs from cron. Expiry counts only the latest
-   verified licence and certificate, as the Accounts list does: a verified renewal stops the alert,
-   and pending or rejected uploads change nothing.
+   simulated email or a call task for the RM. Also runs from cron. Expiry looks only at the licence
+   and certificate in force, as the Accounts list does: for each, the verified document that
+   expires last. A verified renewal stops new alerts on the old document (it alerts in its own
+   right if it expires within 30 days); an alert already open stays open until someone resolves
+   it, and the next scan marks it on the Risk radar as no longer in force. Pending or rejected
+   uploads change nothing.
 4. **Credit memo drafting** — ratios, pro-forma DSCR with the new facility and an indicative
    scorecard grade come from code, benchmarks from a static table; the model drafts six cited
    sections. A credit officer who didn't start the run edits and approves it, which moves the deal

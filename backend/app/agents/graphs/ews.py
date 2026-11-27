@@ -31,10 +31,10 @@ from app.core.config import get_settings
 from app.db.session import get_sessionmaker
 from app.models import AgentRun, Company, Contact, EarlyWarningSignal, User
 from app.models.base import utcnow
-from app.models.enums import ActionType, EwsStatus, EwsTrigger, Severity
+from app.models.enums import ActionType, DocumentType, EwsStatus, EwsTrigger, Severity
 from app.services import audit
 from app.services.access import can_see
-from app.services.ews_rules import evaluate, load_inputs, worst
+from app.services.ews_rules import documents_in_force, evaluate, load_inputs, worst
 
 SCAN = "ews_scan"
 REVIEW = "ews_review"
@@ -46,7 +46,7 @@ TRIGGER_TEXT = {
     EwsTrigger.CASHFLOW_DROP: "average bank balance fell sharply",
     EwsTrigger.UTILIZATION_SPIKE: "working-capital line has stayed close to its limit",
     EwsTrigger.BOUNCED_CHEQUES: "cheques bounced last month",
-    EwsTrigger.DOC_EXPIRY: "a licence or CR certificate is about to expire",
+    EwsTrigger.DOC_EXPIRY: "a licence or CR certificate is expiring or has expired",
     EwsTrigger.COVENANT_BREACH: "a facility covenant failed on the latest figures",
 }
 
@@ -56,6 +56,9 @@ TRIGGER_TEXT = {
 
 class ScanState(TypedDict, total=False):
     findings: dict[str, list[dict[str, Any]]]
+    # Every company scanned: {company_id: {doc_type: {"document_id", "expiry_date"}}}, one entry
+    # per type that has a document in force.
+    in_force: dict[str, dict[str, dict[str, str]]]
     flagged: list[dict[str, Any]]
     result: dict[str, Any]
 
@@ -71,7 +74,13 @@ async def scan_portfolio(state: ScanState) -> ScanState:
     if starter is not None:
         inputs = [i for i in inputs if can_see(starter, i.company)]
     findings: dict[str, list[dict[str, Any]]] = {}
+    in_force: dict[str, dict[str, dict[str, str]]] = {}
     for inp in inputs:
+        # Kept for companies without findings too: `create_ews_records` marks their older alerts.
+        in_force[str(inp.company.id)] = {
+            doc_type.value: {"document_id": str(d.id), "expiry_date": expiry.isoformat()}
+            for doc_type, (expiry, d) in documents_in_force(inp.documents).items()
+        }
         found = evaluate(inp, s, today)
         if found:
             findings[str(inp.company.id)] = [
@@ -98,15 +107,53 @@ async def scan_portfolio(state: ScanState) -> ScanState:
         },
         {cid: [f["trigger"] for f in fs] for cid, fs in findings.items()},
     )
-    return {"findings": findings}
+    return {"findings": findings, "in_force": in_force}
 
 
 def _source_key(metrics: dict[str, Any]) -> str:
     return ",".join(metrics.get("source_record_ids", []))
 
 
+async def _mark_not_in_force(
+    session: AsyncSession, in_force: dict[str, dict[str, dict[str, str]]]
+) -> int:
+    """Mark each unresolved expiry signal of the scanned companies whose cited document is no
+    longer the one in force, and unmark those whose document is back. Returns how many carry the
+    mark.
+
+    No finding refreshes such a signal (findings cite the document in force), so its day count
+    stops moving; the mark says which document is in force now, or holds nulls if none is.
+    """
+    marked = 0
+    # Unresolved expiry signals are few, so load them all and skip companies outside the scan: an
+    # IN list of scanned companies would need a bind parameter each, and a large bank's scan
+    # would pass the driver's limit.
+    signals = await session.scalars(
+        select(EarlyWarningSignal).where(
+            EarlyWarningSignal.trigger == EwsTrigger.DOC_EXPIRY,
+            EarlyWarningSignal.status != EwsStatus.RESOLVED,
+        )
+    )
+    for sig in signals:
+        scanned = in_force.get(str(sig.company_id))
+        if scanned is None:
+            continue
+        metrics = {k: v for k, v in sig.metrics.items() if k != "in_force"}
+        current_doc = scanned.get(metrics.get("document_type", ""))
+        cited = (metrics.get("source_record_ids") or [None])[0]
+        if current_doc is None or current_doc["document_id"] != cited:
+            metrics["in_force"] = (
+                dict(current_doc) if current_doc else {"document_id": None, "expiry_date": None}
+            )
+            marked += 1
+        if metrics != sig.metrics:
+            sig.metrics = metrics  # a new dict: JSON columns don't track changes made in place
+    return marked
+
+
 async def create_ews_records(state: ScanState) -> ScanState:
-    """Insert new signals; refresh the metrics of ones already open. Safe to re-run."""
+    """Insert new signals; refresh the metrics of ones already open; mark open expiry signals whose
+    document is no longer in force. Safe to re-run."""
     ctx = current()
     new: dict[str, list[str]] = {}
     refreshed = 0
@@ -165,11 +212,16 @@ async def create_ews_records(state: ScanState) -> ScanState:
                         actor_user_id=ctx.user_id,
                     )
                 new.setdefault(company_id, []).append(str(sig_id))
+        marked = await _mark_not_in_force(session, state["in_force"])
         await session.commit()
     ctx.tool(
         "create_ews_records",
         {"companies_with_findings": len(state["findings"])},
-        {"new_signals": sum(len(v) for v in new.values()), "refreshed_signals": refreshed},
+        {
+            "new_signals": sum(len(v) for v in new.values()),
+            "refreshed_signals": refreshed,
+            "marked_not_in_force": marked,
+        },
     )
     return {"flagged": [{"company_id": c, "signal_ids": ids} for c, ids in new.items()]}
 
@@ -472,6 +524,15 @@ def build_review() -> StateGraph[Any]:
 
 # ---------------- mock LLM output ----------------
 
+_DOC_LABEL = {
+    DocumentType.TRADE_LICENSE: "trade licence",
+    DocumentType.CR_CERTIFICATE: "CR certificate",
+}
+
+
+def _days(n: int) -> str:
+    return f"{n} day" if n == 1 else f"{n} days"
+
 
 def _sig_line(sig: dict[str, Any], currency: str) -> str:
     m = sig["metrics"]
@@ -491,8 +552,13 @@ def _sig_line(sig: dict[str, Any], currency: str) -> str:
         case "BOUNCED_CHEQUES":
             return f"{m['count']} cheques bounced in the month to {m['period']}"
         case "DOC_EXPIRY":
-            doc = m["document_type"].replace("_", " ").lower()
-            return f"the {doc} expires on {m['expiry_date']} ({m['days_left']} days)"
+            doc = _DOC_LABEL[DocumentType(m["document_type"])]
+            on, days = m["expiry_date"], m["days_left"]
+            if days > 0:
+                return f"the {doc} expires on {on} (in {_days(days)})"
+            if days == 0:
+                return f"the {doc} expires today ({on})"
+            return f"the {doc} expired on {on} ({_days(-days)} ago)"
         case _:
             test = f"{m['operator']} {m['threshold']}"
             return f"the {m['metric']} covenant ({test}) failed at {m['actual']}"

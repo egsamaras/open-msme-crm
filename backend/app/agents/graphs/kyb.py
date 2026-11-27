@@ -139,6 +139,7 @@ async def reconcile_against_db(state: State) -> State:
         annual_ebitda=fm.annualise_monthly([s.ebitda for s in snaps]),
         ubo_threshold=get_settings().ubo_threshold_pct,
         today=utcnow().date(),
+        max_validity_years=get_settings().kyb_max_validity_years,
     )
     out = {
         "discrepancies": r.discrepancies,
