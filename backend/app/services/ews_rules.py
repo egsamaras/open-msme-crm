@@ -6,6 +6,7 @@ records they came from, so the agent can cite them and the Risk radar can show t
 """
 
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
@@ -121,17 +122,17 @@ def bounced_cheques(inp: CompanyInputs, s: Settings) -> Finding | None:
     )
 
 
-def doc_expiries(inp: CompanyInputs, s: Settings, today: date) -> list[Finding]:
-    """The trade licence or CR certificate in force expires within the threshold.
+def documents_in_force(documents: Iterable[Document]) -> dict[DocumentType, tuple[date, Document]]:
+    """For each type in `EXPIRING_DOCS`, the document in force and its expiry date.
 
-    In force is the rule behind the Accounts list's next expiry: for each type, the verified
-    document with the latest expiry date. A verified renewal takes over from the old document;
-    pending and rejected uploads don't count. Of two with the same date, the one added first stays
-    in force, so uploading a copy doesn't raise a second alert. The finding cites the document in
-    force, which is how the scan matches it to an alert already open on that document.
+    In force is the rule behind the Accounts list's next expiry, which the early-warning rule and
+    the briefing share: the verified document with the latest expiry date. A verified renewal takes
+    over from the old document; pending and rejected uploads and undated documents don't count. Of
+    two with the same date, the one added first stays in force, so a copy uploaded later doesn't
+    take its place.
     """
     in_force: dict[DocumentType, tuple[date, Document]] = {}
-    for d in sorted(inp.documents, key=lambda doc: (doc.created_at, str(doc.id))):
+    for d in sorted(documents, key=lambda doc: (doc.created_at, str(doc.id))):
         if (
             d.doc_type in EXPIRING_DOCS
             and d.verification_status == VerificationStatus.VERIFIED
@@ -139,8 +140,18 @@ def doc_expiries(inp: CompanyInputs, s: Settings, today: date) -> list[Finding]:
             and (d.doc_type not in in_force or d.expiry_date > in_force[d.doc_type][0])
         ):
             in_force[d.doc_type] = (d.expiry_date, d)
+    return in_force
+
+
+def doc_expiries(inp: CompanyInputs, s: Settings, today: date) -> list[Finding]:
+    """The trade licence or CR certificate in force (`documents_in_force`) expires within the
+    threshold.
+
+    The finding cites the document in force, which is how the scan matches it to an alert already
+    open on that document, so uploading a copy doesn't raise a second alert.
+    """
     out = []
-    for doc_type, (expiry, d) in sorted(in_force.items()):
+    for doc_type, (expiry, d) in sorted(documents_in_force(inp.documents).items()):
         days_left = (expiry - today).days
         if days_left > s.ews_doc_expiry_days:
             continue

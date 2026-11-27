@@ -41,7 +41,7 @@ from app.models.enums import (
     VerificationStatus,
 )
 from app.services import financial_math as fm
-from app.services.ews_rules import WORKING_CAPITAL_PRODUCTS
+from app.services.ews_rules import WORKING_CAPITAL_PRODUCTS, documents_in_force
 from app.services.pipeline import REQUIRED_DOCUMENTS
 
 AGENT = "briefing"
@@ -76,6 +76,23 @@ class Briefing(BaseModel):
 
 def _s(v: Decimal | None) -> str | None:
     return None if v is None else str(v)
+
+
+def document_facts(docs: list[Document]) -> list[dict[str, Any]]:
+    """The account's documents as facts. `in_force` marks the trade licence and CR certificate in
+    force (`documents_in_force`), the only documents whose expiry date can make a gap."""
+    in_force = {d.id for _, d in documents_in_force(docs).values()}
+    return [
+        {
+            "id": str(d.id),
+            "doc_type": d.doc_type.value,
+            "file_name": d.file_name,
+            "expiry_date": d.expiry_date.isoformat() if d.expiry_date else None,
+            "verification_status": d.verification_status.value,
+            "in_force": d.id in in_force,
+        }
+        for d in docs
+    ]
 
 
 async def fetch_account_context(state: State) -> State:
@@ -174,16 +191,7 @@ async def fetch_account_context(state: State) -> State:
             }
             for s in snaps
         ],
-        "documents": [
-            {
-                "id": str(d.id),
-                "doc_type": d.doc_type.value,
-                "file_name": d.file_name,
-                "expiry_date": d.expiry_date.isoformat() if d.expiry_date else None,
-                "verification_status": d.verification_status.value,
-            }
-            for d in docs
-        ],
+        "documents": document_facts(docs),
         "open_signals": [
             {
                 "id": str(s.id),
@@ -272,7 +280,9 @@ def compute_metrics(facts: dict[str, Any]) -> dict[str, Any]:
             gaps.append(
                 {"kind": d["verification_status"].lower(), "doc_type": d["doc_type"], "id": d["id"]}
             )
-        if d["expiry_date"]:
+        # Only the licence or certificate in force can be expiring: a verified renewal takes over
+        # from the old one, and pending or rejected uploads and other documents don't count.
+        if d["in_force"]:
             days = (date.fromisoformat(d["expiry_date"]) - today).days
             if days <= DOC_HORIZON_DAYS:
                 gaps.append(
